@@ -1,15 +1,5 @@
 
-module BPDual
 
-using LinearAlgebra, SparseArrays, LinearOperators, Printf
-using QRupdate , Plots
-using DataFrames
-
-
-include("helpers.jl")
-
-export bpdual, sparsity, newtonstep, objectives, infeasibilities
-export trimx, triminf, restorefeas, htpynewlam, find_step
 
 function bpdual(
     A::AbstractMatrix,
@@ -392,5 +382,4 @@ function bpdual(
     end
     return active,state,x,y,S,R,tracer
 end # function bpdual
-end #module
 
