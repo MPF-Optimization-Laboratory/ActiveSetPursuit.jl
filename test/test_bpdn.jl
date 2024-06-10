@@ -2,9 +2,8 @@
 # ------------------------------------------------------------------
 #  Test Basis pursuit
 # ------------------------------------------------------------------ 
-using Test
-using LinearAlgebra, Random, SparseArrays
-using ActiveSetPursuit
+
+using Test, LinearAlgebra, Random, SparseArrays, ActiveSetPursuit
 
 function test_bpdn()
     m = 600
@@ -35,4 +34,9 @@ function test_bpdn()
     @test pFeas <= 1e-6
     @test dFeas <= 1e-6
     @test dComp <= 1e-6
+end
+
+
+for ntest = 1:10
+    test_bpdn()
 end

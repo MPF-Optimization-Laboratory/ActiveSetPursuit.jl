@@ -2,9 +2,6 @@
 # Helper functions 
 # ------------------------------------------------------------------
 
-using LinearAlgebra, SparseArrays, LinearOperators, Printf
-using QRupdate , Plots, Random
-
 
 ## A) newtonstep
 # ----------------------------------------------------------------------

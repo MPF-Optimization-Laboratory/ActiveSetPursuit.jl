@@ -1,9 +1,4 @@
-module homotopy
 
-using LinearAlgebra
-export as_topy
-include("BPDual.jl")
-using .BPDual
 
 function as_topy(A, b, lam)
     m,n = size(A)
@@ -15,4 +10,3 @@ function as_topy(A, b, lam)
     x[active] = xx
     return x, tracer
 end
-end #module
