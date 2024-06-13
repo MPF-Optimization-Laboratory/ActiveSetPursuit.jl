@@ -10,7 +10,8 @@ function bpdual(
     active::Union{Nothing, Vector{Int}} = nothing, ## maybe write as struct later
     state::Union{Nothing, Vector{Int}} = nothing,
     y::Union{Nothing, Vector{Float64}} = nothing,
-    S::Union{Nothing, Matrix{Float64}} = nothing,
+    # S::Union{Nothing, Matrix{Float64}} = nothing,
+    S = Matrix{Float64}(undef, size(A, 1), 0),
     R::Union{Nothing, Matrix{Float64}} = nothing,
     loglevel::Int = 1,
     coldstart::Bool = true,
@@ -343,7 +344,7 @@ function bpdual(
             # Delete an active constraint.
             if drop
                 nact = length(active)
-                _,qa = findmax(abs.(x .* dropa))
+                _, qa = findmax(abs.(x .* dropa))
                 q = active[qa]
                 state[q] = 0
                 S = S[:, 1:nact .!= qa]
