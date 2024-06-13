@@ -10,7 +10,6 @@ function bpdual(
     active::Union{Nothing, Vector{Int}} = nothing, ## maybe write as struct later
     state::Union{Nothing, Vector{Int}} = nothing,
     y::Union{Nothing, Vector{Float64}} = nothing,
-    # S::Union{Nothing, Matrix{Float64}} = nothing,
     S = Matrix{Float64}(undef, size(A, 1), 0),
     R::Union{Nothing, Matrix{Float64}} = nothing,
     loglevel::Int = 1,
@@ -24,7 +23,6 @@ function bpdual(
     gapTol::Real = 1e-06,
     pivTol::Real = 1e-12,
     actMax::Real = Inf)
-
 
     # start 
     time0 = time()
@@ -106,7 +104,6 @@ function bpdual(
     svar      = ""     # string value
     r         = zeros(m)
     zerovec   = zeros(n)
-    nBrks     = 0
     numtrim   = 0
     nprodA    = 0
     nprodAt   = 0
@@ -145,7 +142,6 @@ function bpdual(
     #     end
     # end
 
-
     sL, sU = infeasibilities(bl, bu, vec(z))
     inactive = abs.(state) .!= 1
     state[inactive .& (sL .> feaTol)] .= -2
@@ -156,8 +152,6 @@ function bpdual(
     if infeasible
         eFlag = :EXIT_INFEASIBLE
     end
-
-
 
     # ------------------------------------------------------------------
     # Main loop.
@@ -193,7 +187,7 @@ function bpdual(
         rNorm = norm(r,2)
         xNorm = norm(x,1)
         
-        pObj, dObj, rGap = objectives(x,y,active,b,bl,bu,λ,rNorm,yNorm)
+        _, dObj, rGap = objectives(x,y,active,b,bl,bu,λ,rNorm,yNorm)
         nact = length(active)    
 
         if loglevel>0
