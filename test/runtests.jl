@@ -9,4 +9,6 @@ println("≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡�
 
 @testset "ActiveSetPursuit.jl" begin
     @testset "BPDN" begin include("test_bpdn.jl") end
+    @testset "Recover decaying coefficients" begin include("test_recover_decaying.jl") end
 end
+
