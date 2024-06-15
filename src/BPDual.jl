@@ -408,12 +408,19 @@ function bpdual(
 
         end # if step < 1
 
+
         push!(tracer.iteration, itn)
         push!(tracer.lambda, λ)
-        push!(tracer.active, active)  
-        push!(tracer.activesoln, x) 
+        push!(tracer.active, copy(active))
+        push!(tracer.activesoln, copy(x))
 
     end # while true
+
+    ## one last Update
+    push!(tracer.iteration, itn)
+    push!(tracer.lambda, λ)
+    push!(tracer.active, copy(active))
+    push!(tracer.activesoln, copy(x))
 
     tottime = time() - time0
     if loglevel > 0
