@@ -23,17 +23,12 @@ function test_bpdn()
     bu = +ones(n)
     
     # Solve the basis pursuit problem
-    active,state,xs,y,S,R,tracer = bpdual(A, b, 0., bl, bu, homotopy = false, loglevel =0)
-    xx = zeros(n)
-    xx[Int.(active)] = xs
-    
+    tracer = bpdual(A, b, 0., bl, bu, homotopy = false, loglevel =0)
+
+    xx, λ = tracer[end]
     pFeas = norm(A * xx - b, Inf) / max(1, norm(xx, Inf))
-    dFeas = max(0, norm(A' * y, Inf) - 1)
-    dComp = abs(norm(xx, 1) - dot(b, y))
-    
     @test pFeas <= 1e-6
-    @test dFeas <= 1e-6
-    @test dComp <= 1e-6
+
 end
 
 

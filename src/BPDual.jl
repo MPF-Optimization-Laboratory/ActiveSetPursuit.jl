@@ -1,8 +1,24 @@
+struct ASPTracer{T}
+    iteration::Vector{Int}
+    lambda::Vector{T}
+    active::Vector{Vector{Int}}
+    activesoln::Vector{Vector{T}}
+    N::Int
+end
 
+Base.length(t::ASPTracer) = length(t.iteration)
 
+function Base.getindex(t::ASPTracer, i::Integer)
+    as = t.active[i]
+    x = zeros(t.N)
+    x[as] = t.activesoln[i]
+    return x, t.lambda[i]
+end
+
+Base.lastindex(t::ASPTracer) = lastindex(t.active)
 
 function bpdual(
-    A::AbstractMatrix,
+    A::Union{AbstractMatrix,AbstractLinearOperator},
     b::Vector,
     λin::Real,
     bl::Vector,
@@ -24,6 +40,45 @@ function bpdual(
     pivTol::Real = 1e-12,
     actMax::Real = Inf)
 
+    """
+    Solve the optimization problem:
+
+    DP:       minimize_y   -b'y  +  1/2 * λ * y'y
+              subject to   bl <= A'y <= bu
+
+    using given `A`, `b`, `bl`, `bu`, and `λ`. When `bl = -e` and `bu = e = ones(n, 1)`,
+    DP is the dual Basis Pursuit problem:
+
+    BPdual:   maximize_y   b'y  -  1/2 * λ * y'y
+            subject to   ||A'y||_inf  <=  1.
+
+    # Input
+    - `A` : `m`-by-`n` explicit matrix or operator.
+    - `b` : `m`-vector.
+    - `λin` : Nonnegative scalar.
+    - `bl`, `bu` : `n`-vectors (bl lower bound, bu upper bound).
+    - `active`, `state`, `y`, `S`, `R` : May be empty or output from `BPdual` with a previous value of `λ`.
+    - `loglevel` : Logging level.
+    - `coldstart` : Boolean indicating if a cold start should be used.
+    - `homotopy` : Boolean indicating if homotopy should be used.
+    - `λmin` : Minimum value for `λ`.
+    - `trim` : Number of constraints to trim.
+    - `itnMax` : Maximum number of iterations.
+    - `feaTol` : Feasibility tolerance.
+    - `optTol` : Optimality tolerance.
+    - `gapTol` : Gap tolerance.
+    - `pivTol` : Pivot tolerance.
+    - `actMax` : Maximum number of active constraints.
+
+    # Output
+    - `tracer` : A structure to store trace information at each iteration of the optimization process.
+        It contains:
+            - `active::Vector{Int}`: The indices of the active constraints.
+            - `activesoln::Vector{T}`: The solutions corresponding to the current active set.
+            - `lambda::Vector{T}`: Lambda values.
+            - `N::Int`: The total number of variables in the solution vector.
+    """
+
     # start 
     time0 = time()
 
@@ -32,14 +87,13 @@ function bpdual(
     # ------------------------------------------------------------------
     m, n = size(A)
 
-    tracer = DataFrame(
-    Itn = Int[],
-    Active = String[],
-    X = String[],
-    Lambda = Float64[],
-    Xnorm = Float64[],
-    Rnorm = Float64[],
-    CondS = Float64[])
+    tracer = ASPTracer(
+        Int[],                  # iteration
+        Float64[],              # lambda
+        Vector{Vector{Int}}(),  # active
+        Vector{Vector{Float64}}(), # activesoln
+        n                       # N
+    )
 
 
     if coldstart || isnothing(active) || isnothing(state) || isnothing(y) || isnothing(S) || isnothing(R)
@@ -239,7 +293,9 @@ function bpdual(
         if eFlag == :EXIT_OPTIMAL || eFlag == :EXIT_SMALL_DGAP
             # Optimal trimming. λ0 may be different from λ.
             # Recompute gradient just in case.
-            println("\nOptimal solution found. Trimming multipliers...")
+            if loglevel > 0 
+                println("\nOptimal solution found. Trimming multipliers...")
+            end
             g = b - λin*y
             trimx(x,S,R,active,state,g,b,λ,feaTol,optTol,loglevel)
             numtrim = nact - length(active)
@@ -352,18 +408,19 @@ function bpdual(
 
         end # if step < 1
 
-        if itn % 1000 == 0 #save every 1000 itns 
-            push!(tracer, (
-                Itn = itn,
-                Active = join(active, ","),
-                X = join(x, ","),
-                Lambda = λ,
-                Xnorm = xNorm,
-                Rnorm = rNorm,
-                CondS = condS))
-        end
+
+        push!(tracer.iteration, itn)
+        push!(tracer.lambda, λ)
+        push!(tracer.active, copy(active))
+        push!(tracer.activesoln, copy(x))
 
     end # while true
+
+    ## one last Update
+    push!(tracer.iteration, itn)
+    push!(tracer.lambda, λ)
+    push!(tracer.active, copy(active))
+    push!(tracer.activesoln, copy(x))
 
     tottime = time() - time0
     if loglevel > 0
@@ -375,6 +432,6 @@ function bpdual(
         @printf(" %-20s: %8.1e %5s","Solution time (sec)",tottime,"")
         @printf("\n\n")
     end
-    return active,state,x,y,S,R,tracer
+    return tracer
 end # function bpdual
 
