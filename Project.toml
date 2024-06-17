@@ -5,7 +5,6 @@ version = "0.1.0-dev"
 
 [deps]
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 LinearOperators = "5c8ed15e-5a4c-59e4-a42b-c7e8811fb125"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
@@ -22,6 +21,7 @@ Printf = "1.9, 1.10"
 QRupdate = "1.0"
 Random = "1.9, 1.10"
 SparseArrays = "1.9, 1.10"
+Logging = "1.11"
 julia = "1.9, 1.10"
 
 [extras]

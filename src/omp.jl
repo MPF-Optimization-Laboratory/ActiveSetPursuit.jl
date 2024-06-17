@@ -16,6 +16,25 @@ end
 
 Base.lastindex(t::OMPTracer) = lastindex(t.active)
 
+@doc raw"""
+    ```julia
+    asp_omp(A,B)```
+    Orthogonal matching pursuit for sparse 
+    ```math 
+    Ax=b
+    ```
+    Applies the orthogonal matching pursuit (OMP) algorithm to
+    estimate a sparse solution of the underdetermined system `Ax=b`.
+
+    (BP)   
+    ```math 
+    \min_x  \|x\|_1  
+    ```
+    subject to  
+    ```math 
+    Ax = b.
+    ```
+"""
 function asp_omp(
     A::Union{AbstractMatrix, AbstractLinearOperator},
     b::Vector,
@@ -33,16 +52,6 @@ function asp_omp(
     pivTol::Real = 1e-12,
     actMax::Real = Inf)
     
-    """
-        Orthogonal matching pursuit for sparse Ax=b
-
-        asp_omp applies the orthogonal matching pursuit (OMP) algorithm to
-        estimate a sparse solution of the underdetermined system Ax=b.
-
-        (BP)   minimize_x  ||x||_1  subject to  Ax = b.
-
-        asp_omp(A, b, λ) solves the basis pursuit problem.
-    """
     # Start the clock and size up the problem.
     time0 = time()
 
