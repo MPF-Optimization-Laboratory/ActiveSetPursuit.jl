@@ -7,7 +7,7 @@ using Test, LinearAlgebra, Random, SparseArrays, ActiveSetPursuit
 function test_recover_decaying()
     m = 600
     n = 2560
-    threshold_percentage = 0.9   
+    threshold_percentage = 0.9
 
     # Generate solution with decaying coefficients and permutate
     x = randn(n) ./ (1:n).^2
@@ -22,7 +22,7 @@ function test_recover_decaying()
     bu = +ones(n)
 
     # Solve the basis pursuit problem
-    tracer = asp_homotopy(A, b, min_lambda = 0.0, itnMax =300, loglevel =0)
+    tracer = asp_homotopy(A, b, min_lambda = 0.0, itnMax = 400, loglevel =0) 
     xs, λ = tracer[end]
 
     cumulative_norm = cumsum(abs.(x[sortperm(abs.(x), rev=true)]))

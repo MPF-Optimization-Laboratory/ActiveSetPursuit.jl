@@ -19,11 +19,9 @@ function test_bpdn()
     
     # Compute the RHS vector
     b = A * x
-    bl = -ones(n)
-    bu = +ones(n)
     
     # Solve the basis pursuit problem
-    tracer = bpdual(A, b, 0., bl, bu, homotopy = false, loglevel =0)
+    tracer = asp_bpdn(A, b, 0.0, loglevel =0);
 
     xx, λ = tracer[end]
     pFeas = norm(A * xx - b, Inf) / max(1, norm(xx, Inf))
