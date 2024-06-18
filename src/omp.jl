@@ -1,20 +1,15 @@
 struct OMPTracer{T}
     iteration::Vector{Int}
-    active::Vector{Vector{Int}}
-    activesoln::Vector{Vector{T}}
-    N::Int
+    solution::Vector{SparseVector{T}} 
 end
 
 Base.length(t::OMPTracer) = length(t.iteration)
 
 function Base.getindex(t::OMPTracer, i::Integer)
-    as = t.active[i]
-    x = zeros(t.N)
-    x[as] = t.activesoln[i]
-    return x 
+    return t.solution[i]
 end
 
-Base.lastindex(t::OMPTracer) = lastindex(t.active)
+Base.lastindex(t::OMPTracer) = lastindex(t.iteration)
 
 @doc raw"""
     ```julia
@@ -38,7 +33,7 @@ Base.lastindex(t::OMPTracer) = lastindex(t.active)
 function asp_omp(
     A::Union{AbstractMatrix, AbstractLinearOperator},
     b::Vector,
-    λin::Real,
+    λin::Real;
     active::Union{Nothing, Vector{Int}} = nothing,  
     state::Union{Nothing, Vector{Int}} = nothing,
     S::Matrix{Float64} = Matrix{Float64}(undef, size(A, 1), 0),
@@ -56,18 +51,17 @@ function asp_omp(
     time0 = time()
 
     z = A' * b
-
+    
     m = length(b)
     n = length(z)
     nprodA = 0
     nprodAt = 1
 
     # Initialize the tracer
+
     tracer = OMPTracer(
         Int[],                  # iteration
-        Vector{Vector{Int}}(),  # active
-        Vector{Vector{Float64}}(), # activesoln
-        n                       # N
+        Vector{SparseVector{Float64}}() # now stores full sparse solutions
     )
 
     # Print log header.
@@ -146,7 +140,7 @@ function asp_omp(
         rNorm = norm(r, 2)
         xNorm = norm(x, 1)
 
-@info @sprintf("%4i  %8i %12.5e %12.5e %12.5e", itn, p, zmax, rNorm, xNorm)
+        @info @sprintf("%4i  %8i %12.5e %12.5e %12.5e", itn, p, zmax, rNorm, xNorm)
 
         # Check exit conditions.
         if eFlag != :EXIT_UNKNOWN
@@ -186,16 +180,18 @@ function asp_omp(
 
         R = qraddcol(S, R, a)  # Update R
         S = hcat(S, a)  # Expand S, active
-        push!(active, p)
 
         push!(tracer.iteration, itn)
-        push!(tracer.active, copy(active))
-        push!(tracer.activesoln, copy(x))
+        sparse_x_full = SparseVector(n, copy(active), copy(x))
+        push!(tracer.solution, copy(sparse_x_full))
+        
+        push!(active, p)
+
     end #while true
 
     push!(tracer.iteration, itn)
-    push!(tracer.active, copy(active))
-    push!(tracer.activesoln, copy(x))
+    sparse_x_full = SparseVector(n, copy(active), copy(x))
+    push!(tracer.solution, copy(sparse_x_full))
 
     tottime = time() - time0
     if loglevel > 0

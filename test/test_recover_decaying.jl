@@ -29,11 +29,13 @@ function test_recover_decaying()
     indices_to_recover = sortperm(abs.(x), rev=true)[1:findfirst(cumulative_norm .>= threshold_percentage * cumulative_norm[end])]
     
     # Get the corresponding values in the recovered solution
-    recovered_indices = sortperm(abs.(xs), rev=true)[1:length(indices_to_recover)]
-
+    # SparseVector is not sorted by default! 
+    recovered_indices = xs.nzind[sortperm(abs.(xs.nzval), rev=true)][1:length(indices_to_recover)]
+    recovered_values = sort(abs.(xs.nzval), rev=true)[1:length(indices_to_recover)]
+    
     # Check if all the significant indices are correctly recovered
     indices_correct = all(in(indices_to_recover).(recovered_indices))
-    values_correct = all((abs.(x[indices_to_recover]) .- abs.(xs[recovered_indices])) .< 1e-3)
+    values_correct = all((abs.(x[indices_to_recover]) .- abs.(recovered_values)) .< 1e-3)
 
     @test indices_correct
     @test values_correct

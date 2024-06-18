@@ -21,7 +21,7 @@ Printf = "1.9, 1.10"
 QRupdate = "1.0"
 Random = "1.9, 1.10"
 SparseArrays = "1.9, 1.10"
-Logging = "1.11"
+Logging = "1.9"
 julia = "1.9, 1.10"
 
 [extras]

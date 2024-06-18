@@ -1,23 +1,16 @@
 struct ASPTracer{T}
     iteration::Vector{Int}
     lambda::Vector{T}
-    active::Vector{Vector{Int}}
-    activesoln::Vector{Vector{T}}
-    N::Int
+    solution::Vector{SparseVector{T}} 
 end
 
 Base.length(t::ASPTracer) = length(t.iteration)
 
 function Base.getindex(t::ASPTracer, i::Integer)
-    as = t.active[i]
-    x = zeros(t.N)
-    x[as] = t.activesoln[i]
-    return x, t.lambda[i]
+    return t.solution[i], t.lambda[i]
 end
 
-Base.lastindex(t::ASPTracer) = lastindex(t.active)
-
-
+Base.lastindex(t::ASPTracer) = lastindex(t.iteration)
 
 @doc raw"""
 ```julia
@@ -108,10 +101,9 @@ function bpdual(
     tracer = ASPTracer(
         Int[],                  # iteration
         Float64[],              # lambda
-        Vector{Vector{Int}}(),  # active
-        Vector{Vector{Float64}}(), # activesoln
-        n                       # N
+        Vector{SparseVector{Float64}}() # now stores full sparse solutions
     )
+
 
     if coldstart || isnothing(active) || isnothing(state) || isnothing(y) || isnothing(S) || isnothing(R)
         active = Vector{Int}([])
@@ -376,14 +368,14 @@ function bpdual(
 
         push!(tracer.iteration, itn)
         push!(tracer.lambda, λ)
-        push!(tracer.active, copy(active))
-        push!(tracer.activesoln, copy(x))
+        sparse_x_full = SparseVector(n, copy(active), copy(x))
+        push!(tracer.solution, copy(sparse_x_full))
     end
 
     push!(tracer.iteration, itn)
     push!(tracer.lambda, λ)
-    push!(tracer.active, copy(active))
-    push!(tracer.activesoln, copy(x))
+    sparse_x_full = SparseVector(n, copy(active), copy(x))
+    push!(tracer.solution, copy(sparse_x_full))
 
     tottime = time() - time0
     if loglevel > 0
