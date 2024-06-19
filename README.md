@@ -38,9 +38,21 @@ Ensure that the following inputs are defined before running the `asp_bpdn` funct
 To solve the basis pursuit denoising problem, execute the following command in Julia:
 
 ```julia
-julia> tracer = asp_bpdn(A, b, λin)
+N, M = 1000, 300
+A = randn(N, M)
+xref = zeros(M)
+xref[randperm(M)[1:20]] = randn(20)  # 20 non-zero entries
+b = A * xref
+const λin = 0.0
+tracer = asp_bpdn(A, b, λin)
 ```
-After completing the optimization process, the solution and the regularization parameter at each iteration `itn` can be accessed as follows:
+After the optimization process completes, the solution vector and the regularization parameter at any iteration `itn` can be accessed as follows:
+
 ```jlcon
-julia> xx, λ = tracer[itn]
+xx, λ = tracer[itn]
+```
+To extract the final iterate:
+
+ ```jlcon
+x_final, λ_final = tracer[itn]
 ```
