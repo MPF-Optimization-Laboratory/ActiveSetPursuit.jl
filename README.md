@@ -20,7 +20,7 @@ $$\underset{x}{\text{minimize}} \hspace{0.5em}  \lambda \||x\||_1 + \frac{1}{2} 
 
 The package can be installed as follows:
 ```jlcon
-julia> ] add ComplexElliptic
+julia> ] add ActiveSetPursuit
 
 ```
 
