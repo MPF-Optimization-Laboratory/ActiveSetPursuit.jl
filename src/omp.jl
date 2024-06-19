@@ -1,12 +1,13 @@
 struct OMPTracer{T}
     iteration::Vector{Int}
+    lambda::Vector{T}
     solution::Vector{SparseVector{T}} 
 end
 
 Base.length(t::OMPTracer) = length(t.iteration)
 
 function Base.getindex(t::OMPTracer, i::Integer)
-    return t.solution[i]
+    return t.solution[i], t.lambda[i]
 end
 
 Base.lastindex(t::OMPTracer) = lastindex(t.iteration)
@@ -61,6 +62,7 @@ function asp_omp(
 
     tracer = OMPTracer(
         Int[],                  # iteration
+        Float64[],              # lambda
         Vector{SparseVector{Float64}}() # now stores full sparse solutions
     )
 
@@ -182,6 +184,7 @@ function asp_omp(
         S = hcat(S, a)  # Expand S, active
 
         push!(tracer.iteration, itn)
+        push!(tracer.lambda, zmax)
         sparse_x_full = SparseVector(n, copy(active), copy(x))
         push!(tracer.solution, copy(sparse_x_full))
         
@@ -190,6 +193,7 @@ function asp_omp(
     end #while true
 
     push!(tracer.iteration, itn)
+    push!(tracer.lambda, zmax)
     sparse_x_full = SparseVector(n, copy(active), copy(x))
     push!(tracer.solution, copy(sparse_x_full))
 
