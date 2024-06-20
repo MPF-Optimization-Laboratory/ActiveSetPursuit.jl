@@ -306,7 +306,7 @@ function htpynewlam(active, state, A, R, S, x, y, s1, s2, λ, lamFinal)
     i2 = 0
 
     # Find the largest allowable steps
-    for i in 1:length(active)
+    for i in eachindex(active)
         if state[active[i]] == 1 && dx[i] < -eps()
             step = -x[i] / dx[i]
             if step < alfa[1]
@@ -329,7 +329,7 @@ function htpynewlam(active, state, A, R, S, x, y, s1, s2, λ, lamFinal)
     r1 = dz .+ s1
     r2 = dz .- s2
 
-    for i in 1:length(dz)
+    for i in eachindex(dz)
         if dz[i] < -eps() && free[i]
             step = λ * s1[i] / r1[i]
             if step < alfa[3]

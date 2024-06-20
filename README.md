@@ -31,7 +31,7 @@ julia> ] add ActiveSetPursuit
 The `asp_bpdn` function within the `ActiveSetPursuit` package efficiently solves the basis pursuit denoising problem.
 
 Ensure that the following inputs are defined before running the `asp_bpdn` function:
-- **`A`**: The matrix or operator, size `m`-by-`n`.
+- **`A`**: The matrix or linear operator, size `m`-by-`n`.
 - **`b`**: The vector of observations or measurements, size `m`.
 - **`λin`**: A nonnegative scalar that serves as the regularization parameter.
 
@@ -44,9 +44,10 @@ xref = zeros(M)
 xref[randperm(M)[1:20]] = randn(20)  # 20 non-zero entries
 b = A * xref
 const λin = 0.0
-tracer = asp_bpdn(A, b, λin)
+tracer = asp_bpdn(A, b, λin, traceFlag = true)
 ```
-After the optimization process completes, the solution vector and the regularization parameter at any iteration `itn` can be accessed as follows:
+After the optimization process completes, if `traceFlag` was set to true, the solution vector and the regularization parameter at any iteration `itn` can be accessed as follows:
+
 
 ```jlcon
 xx, λ = tracer[itn]

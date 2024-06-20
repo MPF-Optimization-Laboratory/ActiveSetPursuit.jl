@@ -42,7 +42,7 @@ Base.lastindex(t::ASPTracer) = lastindex(t.iteration)
     ```
 
     * Input
-    * `A` : `m`-by-`n` explicit matrix or operator.
+    * `A` : `m`-by-`n` explicit matrix or linear operator.
     * `b` : `m`-vector.
     * `λin` : Nonnegative scalar.
     * `bl`, `bu` : `n`-vectors (bl lower bound, bu upper bound).
@@ -88,7 +88,9 @@ function bpdual(
     optTol::Real = 1e-05,
     gapTol::Real = 1e-06,
     pivTol::Real = 1e-12,
-    actMax::Real = Inf)
+    actMax::Real = Inf,
+    traceFlag::Bool = false
+    )
 
     # Start
     time0 = time()
@@ -103,7 +105,6 @@ function bpdual(
         Float64[],              # lambda
         Vector{SparseVector{Float64}}() # now stores full sparse solutions
     )
-
 
     if coldstart || isnothing(active) || isnothing(state) || isnothing(y) || isnothing(S) || isnothing(R)
         active = Vector{Int}([])
@@ -180,8 +181,8 @@ function bpdual(
             y = b / λ
             z = z / λ    
         else 
-            y = zeros(m, 1)
-            z = zeros(n, 1)
+            y = zeros(m)
+            z = zeros(n)
         end
     else
         g = b - λ*y  # Compute steepest-descent dir
@@ -366,10 +367,12 @@ function bpdual(
             end
         end
 
-        push!(tracer.iteration, itn)
-        push!(tracer.lambda, λ)
-        sparse_x_full = SparseVector(n, copy(active), copy(x))
-        push!(tracer.solution, copy(sparse_x_full))
+        if traceFlag
+            push!(tracer.iteration, itn)
+            push!(tracer.lambda, λ)
+            sparse_x_full = SparseVector(n, copy(active), copy(x))
+            push!(tracer.solution, copy(sparse_x_full))
+        end
     end
 
     push!(tracer.iteration, itn)

@@ -1,5 +1,4 @@
 
-
 @doc raw"""
 ```julia
     asp_bpdn(A,B)```
@@ -11,7 +10,7 @@
     ```
       subject to 
     ```math 
-       Ax = B.
+        Ax = B.
     ```
     ```julia
     asp_bpdn(A,B,λ)
@@ -24,11 +23,9 @@
     ```
 """
 function asp_bpdn(A, b, lambda; kwargs...)
-    n = size(A, 2)
-    bl = -ones(n)
-    bu = +ones(n)
-    tracer = bpdual(A, b, lambda, bl, bu; loglevel =0, kwargs...)
-
-return tracer
-end
-
+  n = size(A, 2)
+  bl = -ones(n)
+  bu = +ones(n)
+  tracer = bpdual(A, b, lambda, bl, bu; loglevel =0, kwargs...)
+  return tracer
+end  
