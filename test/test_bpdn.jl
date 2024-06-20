@@ -31,8 +31,7 @@ function test_bpdn()
     # Linear operator
     # ------------------------
 
-    B = rand(n,m)
-    OP = LinearOperator(A) +  LinearOperator(B)'
+    OP = LinearOperator(A)
     b_op = OP * x
         
     # Solve the basis pursuit problem
