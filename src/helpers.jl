@@ -181,12 +181,6 @@ function trimx(x,S,R,active,state,g,b,λ,featol,opttol,loglevel)
             x = csne(R, S,vec(g))
             break
         end
-        
-        if loglevel > 0 && mod(k,50)==0
-            @printf("\n %4s  %8s %8s  %7s  %10s  %10s  %10s\n",
-                    "Itn","xSmall","Add/Drop","Active","rNorm2",
-                    "xNorm1","dyNorm")
-        end
 
         # The trimmed x is still optimal.
         k += 1
@@ -197,11 +191,6 @@ function trimx(x,S,R,active,state,g,b,λ,featol,opttol,loglevel)
         
         # Grab the next canddate multiplier.
         xmin, qa = findmin(xabs)
-
-        if loglevel > 0
-            @printf(" %4iT %8.1e %8i- %7i  %10.4e  %10.4e  %10.4e\n",
-                    k,xsmall,q,nact,rNorm,xNorm,dyNorm)
-        end
     end  
     return (x,S,R,active,state)
 end
@@ -301,6 +290,7 @@ end
 # ----------------------------------------------------------------------
 
 function htpynewlam(active, state, A, R, S, x, y, s1, s2, λ, lamFinal)
+
     p = 0
     alfa = fill(Inf, 4)
     k = zeros(Int, 4)
@@ -310,41 +300,56 @@ function htpynewlam(active, state, A, R, S, x, y, s1, s2, λ, lamFinal)
     dz = A' * dy
 
     active = Int.(active)
+
+    # Initialize  
+    i1 = 0
+    i2 = 0
+
     # Find the largest allowable steps
-    I1 = findall(i -> state[active[i]] == +1 && dx[i] .< -eps(), 1:length(active))
-    I2 = findall(i -> state[active[i]] == -1 && dx[i] .> eps(),  1:length(active))
-    if !isempty(I1)
-        alfa[1], i = findmin(-x[I1] ./ dx[I1])
-        i1=I1[i]
-        k[1] = active[I1[i]]
-    end
-    if !isempty(I2)
-        alfa[2], i = findmin(-x[I2] ./ dx[I2])
-        i2=I2[i]
-        k[2] = active[I2[i]]
+    for i in eachindex(active)
+        if state[active[i]] == 1 && dx[i] < -eps()
+            step = -x[i] / dx[i]
+            if step < alfa[1]
+                alfa[1] = step
+                i1 = i
+                k[1] = active[i]
+            end
+        elseif state[active[i]] == -1 && dx[i] > eps()
+            step = -x[i] / dx[i]
+            if step < alfa[2]
+                alfa[2] = step
+                i2 = i
+                k[2] = active[i]
+            end
+        end
     end
 
     # Steps along dy without violating constraints
     free = abs.(state) .!= 1
     r1 = dz .+ s1
     r2 = dz .- s2
-    I3 = findall(i -> dz[i] < -eps(1.0) && free[i], 1:length(dz))
-    I4 = findall(i -> dz[i] > eps() && free[i], 1:length(dz))
 
-    if !isempty(I3)
-        alfa[3], i = findmin(λ * s1[I3] ./ r1[I3])
-        k[3] = I3[i]
-    end
-    if !isempty(I4)
-        alfa[4], i = findmin(-λ * s2[I4] ./ r2[I4])
-        k[4] = I4[i]
+    for i in eachindex(dz)
+        if dz[i] < -eps() && free[i]
+            step = λ * s1[i] / r1[i]
+            if step < alfa[3]
+                alfa[3] = step
+                k[3] = i
+            end
+        elseif dz[i] > eps() && free[i]
+            step = -λ * s2[i] / r2[i]
+            if step < alfa[4]
+                alfa[4] = step
+                k[4] = i
+            end
+        end
     end
 
     # λ should never increase, ie, alphamin should always be nonnegative. 
     alfamin, kk = findmin(alfa)
     if alfamin < 0
         if alfamin > -1e-15
-           alfamin = 0;
+        alfamin = 0;
         else
             error(@sprintf("Change in lambda is negative: %s -- call for help!", alfamin))
         end
@@ -354,14 +359,8 @@ function htpynewlam(active, state, A, R, S, x, y, s1, s2, λ, lamFinal)
     dλ = min(alfamin, alfa_max)
     lamNew = λ - dλ
 
+    force = lamNew > lamFinal 
 
-    if lamNew > lamFinal   # Still haven't reached the limit on lambda
-        force  = true;     # We know an active-set change will occur. 
-    else
-        force  = false;    # No active-set change will occur. 
-    end
-
-     
     # Update variables
     x .+= dλ * dx
     if norm(dy) <= (1 + norm(y)) * sqrt(eps())
@@ -386,7 +385,6 @@ function htpynewlam(active, state, A, R, S, x, y, s1, s2, λ, lamFinal)
     if p ==0
         p = []
     end
+    
     return x, dy, dz, step, λ, p
 end
-
-
