@@ -55,5 +55,5 @@ xx, λ = tracer[itn]
 To extract the final iterate:
 
  ```jlcon
-x_final, λ_final = tracer[itn]
+x_final, λ_final = tracer[end]
 ```
