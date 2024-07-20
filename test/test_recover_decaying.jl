@@ -41,6 +41,7 @@ function test_recover_decaying()
     @test values_correct
 end
 
+Random.seed!(1234)
 
 for ntest = 1:10
     test_recover_decaying()
