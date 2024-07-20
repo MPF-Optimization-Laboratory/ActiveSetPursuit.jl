@@ -42,6 +42,7 @@ function test_bpdn()
     @test pFeas_op <= 1e-6
 end
 
+Random.seed!(1234)
 
 for ntest = 1:10
     test_bpdn()
