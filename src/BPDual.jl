@@ -373,7 +373,6 @@ function bpdual(
             sparse_x_full = spzeros(n)
             sparse_x_full[copy(active)] = copy(x)   
             push!(tracer.solution, copy(sparse_x_full))
-            push!(tracer.solution, copy(sparse_x_full))
         end
     end
 
