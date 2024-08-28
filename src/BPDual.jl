@@ -370,14 +370,17 @@ function bpdual(
         if traceFlag
             push!(tracer.iteration, itn)
             push!(tracer.lambda, λ)
-            sparse_x_full = SparseVector(n, copy(active), copy(x))
+            sparse_x_full = spzeros(n)
+            sparse_x_full[copy(active)] = copy(x)   
+            push!(tracer.solution, copy(sparse_x_full))
             push!(tracer.solution, copy(sparse_x_full))
         end
     end
 
     push!(tracer.iteration, itn)
     push!(tracer.lambda, λ)
-    sparse_x_full = SparseVector(n, copy(active), copy(x))
+    sparse_x_full = spzeros(n)
+    sparse_x_full[copy(active)] = copy(x)  
     push!(tracer.solution, copy(sparse_x_full))
 
     tottime = time() - time0
