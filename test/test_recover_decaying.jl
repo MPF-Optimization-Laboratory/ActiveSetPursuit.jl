@@ -22,7 +22,7 @@ function test_recover_decaying()
     bu = +ones(n)
 
     # Solve the basis pursuit problem
-    tracer = asp_homotopy(A, b, min_lambda = 0.0, itnMax = 400, loglevel =0) 
+    tracer = asp_homotopy(A, b, min_lambda = 0.0, actMax = 400, loglevel =0) 
     xs, λ = tracer[end]
 
     cumulative_norm = cumsum(abs.(x[sortperm(abs.(x), rev=true)]))

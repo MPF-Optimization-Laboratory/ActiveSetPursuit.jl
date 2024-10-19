@@ -76,7 +76,7 @@ function bpdual(
     active::Union{Nothing, Vector{Int}} = nothing, ## maybe write as struct later
     state::Union{Nothing, Vector{Int}} = nothing,
     y::Union{Nothing, Vector{Float64}} = nothing,
-    S = Matrix{Float64}(undef, size(A, 1), 0),
+    S = Matrix{Float64}(undef, size(A, 1), size(A, 2)),
     R::Union{Nothing, Matrix{Float64}} = nothing,
     loglevel::Int = 1,
     coldstart::Bool = true,
@@ -110,8 +110,8 @@ function bpdual(
         active = Vector{Int}([])
         state = Vector{Int}(zeros(Int, n))
         y = Vector{Float64}(zeros(Float64, m))
-        S = Matrix{Float64}(zeros(Float64, m, 0))
-        R = Matrix{Float64}(zeros(Float64, 0, 0))
+        S = Matrix{Float64}(zeros(Float64, m, n))
+        R = Matrix{Float64}(zeros(Float64, n,n))
     end
 
     if homotopy
@@ -171,7 +171,7 @@ function bpdual(
     numtrim = 0
     nprodA = 0
     nprodAt = 0
-
+    current_R_size = 0
     # ------------------------------------------------------------------
     # Cold/warm-start initialization.
     # ------------------------------------------------------------------
@@ -211,12 +211,12 @@ function bpdual(
         sL, sU = infeasibilities(bl, bu, z)
         g = b - λ*y  # Steepest-descent direction
 
-        if isempty(R)
-            condS = 1
-        else
-            rmin = minimum(diag(R))
-            rmax = maximum(diag(R))
+        if current_R_size > 0
+            rmin = minimum(diag(R[1:current_R_size,1:current_R_size]))
+            rmax = maximum(diag(R[1:current_R_size,1:current_R_size]))
             condS = rmax / rmin
+        else
+            condS = 1  # Set to a default condition number if `R` is empty.
         end
 
         if condS > 1e+10
@@ -225,11 +225,10 @@ function bpdual(
             npad = size(S, 2) - size(x, 1)
             x = [x; zeros(npad)]
         else
-            dx, dy = newtonstep(S, R, g, x, λ)
+            dx, dy = newtonstep(S[:,1:current_R_size], R[1:current_R_size,1:current_R_size], g, x, λ)
             x .+= dx
         end
-
-        r = b - S*x
+        r = b - S[:,1:current_R_size]*x
 
         # Print to log.
         yNorm = norm(y, 2)
@@ -273,7 +272,7 @@ function bpdual(
                 @info "\nOptimal solution found. Trimming multipliers..."
             end
             g = b - λin*y
-            trimx(x, S, R, active, state, g, b, λ, feaTol, optTol, loglevel)
+            trimx!(x, S, R, active, state, g, b, λ, feaTol, optTol, current_R_size)
             numtrim = nact - length(active)
             nact = length(active)
         end
@@ -286,9 +285,9 @@ function bpdual(
         # New iteration starts here.
         itn += 1
         p = q = 0
-
+        
         if homotopy
-            x, dy, dz, step, λ, p = htpynewlam(active, state, A, R, S, x, y, sL, sU, λ, lamFinal)
+            x, dy, dz, step, λ, p = htpynewlam(active, state, A, R[1:current_R_size,1:current_R_size], S[:,1:current_R_size], x, y, sL, sU, λ, lamFinal)
             nprodAt += 1
         else
             if norm(dy, Inf) < eps()        
@@ -339,8 +338,10 @@ function bpdual(
             a = A * zerovec
             nprodA += 1
             zerovec[p] = 0
-            R = qraddcol(S, R, a)
-            S = [S a]
+            qraddcol!(S, R, a, current_R_size)
+            # R = qraddcol(S, R, a)
+            current_R_size += 1
+            # S = [S a]
             push!(active, p)
             push!(x, 0)
         else
@@ -358,10 +359,11 @@ function bpdual(
                 _, qa = findmax(abs.(x .* dropa))
                 q = active[qa]
                 state[q] = 0
-                S = S[:, 1:nact .!= qa]
+                S[:, 1:nact][:, 1:nact .== qa] .= 0
                 deleteat!(active, qa)
                 deleteat!(x, qa)
-                R = qrdelcol(R, qa)
+                qrdelcol!(S, R, qa)
+                current_R_size -=1
             else
                 eFlag = :EXIT_OPTIMAL
             end
@@ -391,3 +393,7 @@ function bpdual(
     end
     return tracer
 end
+
+
+
+
