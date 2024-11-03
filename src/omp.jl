@@ -31,6 +31,7 @@ Base.lastindex(t::OMPTracer) = lastindex(t.iteration)
     Ax = b.
     ```
 """
+
 function asp_omp(
     A::Union{AbstractMatrix, AbstractLinearOperator},
     b::Vector,
@@ -84,7 +85,8 @@ function asp_omp(
         :EXIT_LAMBDA => "Reached minimum value of lambda",
         :EXIT_RHS_ZERO => "b = 0. The solution is x = 0",
         :EXIT_UNCONSTRAINED => "Unconstrained solution r = b is optimal",
-        :EXIT_UNKNOWN => "unknown exit"
+        :EXIT_UNKNOWN => "unknown exit",
+        :EXIT_ACTMAX => "Max no. of active constraints reached"
     )
 
     itn = 0
@@ -149,8 +151,10 @@ function asp_omp(
             eFlag = :EXIT_OPTIMAL
         elseif itn >= itnMax
             eFlag = :EXIT_TOO_MANY_ITNS
+        elseif eFlag == :EXIT_UNKNOWN && length(active) >= actMax
+            eFlag = :EXIT_ACTMAX
         end
-        
+                
         if eFlag != :EXIT_UNKNOWN
             break
         end
