@@ -108,14 +108,10 @@ function asp_omp(
 
     if eFlag != :EXIT_UNKNOWN || active === nothing
         active = Vector{Int}([])
-    end
-    if state === nothing
+        R = Matrix{Float64}(undef, 0, 0)
+        S = Matrix{Float64}(undef, m, 0)
         state = zeros(Int, n)
     end
-    if R === nothing
-        R = Matrix{Float64}(undef, 0, 0)
-    end
-
     @info @sprintf("%4s  %8s %12s %12s %12s", "Itn", "Var", "λ", "rNorm", "xNorm")
 
 
@@ -129,7 +125,7 @@ function asp_omp(
             nprodAt += 1
             zmax = norm(z, Inf)
         else
-            x,y = csne(R, S, vec(b))
+            x, r = csne(R, S, b)
             if norm(x, Inf) > 1e12
                 eFlag = :EXIT_SINGULAR_LS
                 break
@@ -181,21 +177,22 @@ function asp_omp(
         zerovec[p] = 0
 
         R = qraddcol(S, R, a)  # Update R
-        S = hcat(S, a)  # Expand S, active
+        S = [S a]
 
         push!(tracer.iteration, itn)
         push!(tracer.lambda, zmax)
-        sparse_x_full = SparseVector(n, copy(active), copy(x))
+        sparse_x_full = spzeros(n)
+        sparse_x_full[copy(active)] = copy(x)  
         push!(tracer.solution, copy(sparse_x_full))
-        
         push!(active, p)
 
     end #while true
 
-    push!(tracer.iteration, itn)
-    push!(tracer.lambda, zmax)
-    sparse_x_full = SparseVector(n, copy(active), copy(x))
-    push!(tracer.solution, copy(sparse_x_full))
+    # push!(tracer.iteration, itn)
+    # push!(tracer.lambda, zmax)
+    # sparse_x_full = spzeros(n)
+    # sparse_x_full[copy(active)] = copy(x)  
+    # push!(tracer.solution, copy(sparse_x_full))
 
     tottime = time() - time0
     if loglevel > 0
