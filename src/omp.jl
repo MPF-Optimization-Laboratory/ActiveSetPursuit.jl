@@ -31,7 +31,6 @@ Base.lastindex(t::OMPTracer) = lastindex(t.iteration)
     Ax = b.
     ```
 """
-
 function asp_omp(
     A::Union{AbstractMatrix, AbstractLinearOperator},
     b::Vector,
@@ -47,9 +46,8 @@ function asp_omp(
     optTol::Real = 1e-05,
     gapTol::Real = 1e-06,
     pivTol::Real = 1e-12,
-    actMax::Real = Inf)
+    actMax::Union{Real, Nothing} = nothing) 
     
-    # Start the clock and size up the problem.
     time0 = time()
 
     z = A' * b
@@ -59,15 +57,11 @@ function asp_omp(
     nprodA = 0
     nprodAt = 1
 
-    # Initialize the tracer
-
     tracer = OMPTracer(
-        Int[],                  # iteration
-        Float64[],              # lambda
-        Vector{SparseVector{Float64}}() # now stores full sparse solutions
+        Int[],                 
+        Float64[],              
+        Vector{SparseVector{Float64}}() 
     )
-
-    # Print log header.
 
     if loglevel > 0
         @info "-"^124
@@ -77,6 +71,7 @@ function asp_omp(
         @info "-"^124
     end
 
+
     # Initialize local variables.
     EXIT_INFO = Dict(
         :EXIT_OPTIMAL => "Optimal solution found -- full Newton step",
@@ -85,8 +80,8 @@ function asp_omp(
         :EXIT_LAMBDA => "Reached minimum value of lambda",
         :EXIT_RHS_ZERO => "b = 0. The solution is x = 0",
         :EXIT_UNCONSTRAINED => "Unconstrained solution r = b is optimal",
-        :EXIT_UNKNOWN => "unknown exit",
-        :EXIT_ACTMAX => "Max no. of active constraints reached"
+        :EXIT_ACTMAX => "Max no. of active constraints reached",
+        :EXIT_UNKNOWN => "unknown exit"
     )
 
     itn = 0
@@ -95,7 +90,6 @@ function asp_omp(
     zerovec = zeros(Float64, n)
     p = 0
 
-    # Quick exit if the RHS is zero.
     if norm(b, Inf) == 0
         r = zeros(m)
         eFlag = :EXIT_RHS_ZERO
@@ -110,12 +104,21 @@ function asp_omp(
 
     if eFlag != :EXIT_UNKNOWN || active === nothing
         active = Vector{Int}([])
-        R = Matrix{Float64}(undef, 0, 0)
-        S = Matrix{Float64}(undef, m, 0)
+    end
+    if state === nothing
         state = zeros(Int, n)
     end
-    @info @sprintf("%4s  %8s %12s %12s %12s", "Itn", "Var", "λ", "rNorm", "xNorm")
+    if R === nothing
+        R = Matrix{Float64}(undef, 0, 0)
+    end
 
+    if actMax === nothing
+        actMax = size(A, 2)
+    end
+
+    if loglevel>0
+        @info @sprintf("%4s  %8s %12s %12s %12s", "Itn", "Var", "λ", "rNorm", "xNorm")
+    end
 
     # Main loop.
     while true
@@ -127,7 +130,7 @@ function asp_omp(
             nprodAt += 1
             zmax = norm(z, Inf)
         else
-            x, r = csne(R, S, b)
+            x,y = csne(R, S, vec(b))
             if norm(x, Inf) > 1e12
                 eFlag = :EXIT_SINGULAR_LS
                 break
@@ -140,7 +143,9 @@ function asp_omp(
         rNorm = norm(r, 2)
         xNorm = norm(x, 1)
 
-        @info @sprintf("%4i  %8i %12.5e %12.5e %12.5e", itn, p, zmax, rNorm, xNorm)
+        if loglevel>0
+            @info @sprintf("%4i  %8i %12.5e %12.5e %12.5e", itn, p, zmax, rNorm, xNorm)
+        end
 
         # Check exit conditions.
         if eFlag != :EXIT_UNKNOWN
@@ -151,10 +156,10 @@ function asp_omp(
             eFlag = :EXIT_OPTIMAL
         elseif itn >= itnMax
             eFlag = :EXIT_TOO_MANY_ITNS
-        elseif eFlag == :EXIT_UNKNOWN && length(active) >= actMax
+        elseif itn == actMax
             eFlag = :EXIT_ACTMAX
         end
-                
+
         if eFlag != :EXIT_UNKNOWN
             break
         end
@@ -181,22 +186,20 @@ function asp_omp(
         zerovec[p] = 0
 
         R = qraddcol(S, R, a)  # Update R
-        S = [S a]
+        S = hcat(S, a)  # Expand S, active
 
         push!(tracer.iteration, itn)
         push!(tracer.lambda, zmax)
-        sparse_x_full = spzeros(n)
-        sparse_x_full[copy(active)] = copy(x)  
+        sparse_x_full = SparseVector(n, copy(active), copy(x))
         push!(tracer.solution, copy(sparse_x_full))
         push!(active, p)
 
     end #while true
 
-    # push!(tracer.iteration, itn)
-    # push!(tracer.lambda, zmax)
-    # sparse_x_full = spzeros(n)
-    # sparse_x_full[copy(active)] = copy(x)  
-    # push!(tracer.solution, copy(sparse_x_full))
+    push!(tracer.iteration, itn)
+    push!(tracer.lambda, zmax)
+    sparse_x_full = SparseVector(n, copy(active), copy(x))
+    push!(tracer.solution, copy(sparse_x_full))
 
     tottime = time() - time0
     if loglevel > 0

@@ -146,61 +146,7 @@ end
 # products with A. (Implicitly we're assuming that A has a small norm.)
 # ----------------------------------------------------------------------
 
-# function trimx(x,S,R,active,state,g,b,λ,featol,opttol,loglevel)
-
-#     k = 0
-#     nact = length(active)
-#     xabs = abs.(x)
-#     xmin, qa = findmin(xabs)
-#     gNorm = norm(g,Inf)
-
-#     while xmin < opttol
-
-#         e = sign.(x.*(xabs .> opttol)) # Signs of significant multipliers
-#         q = active[qa] # Index of the corresponding constraint
-#         a = S[:,qa]    # Save the col from S in case we need to add it back. 
-#         xsmall = x[qa] # Value of candidate multiplier
-
-#         # Trim quantities related to the small multiplier.
-#         deleteat!(e, qa)
-#         S = [S[:, 1:qa-1] S[:, qa+1:end]]
-#         deleteat!(active, qa)
-#         # R = qrdelcol(R, qa)
-
-#         R = qrdelcol!(S,R, qa)
-
-
-#         # Recompute the remaining multipliers and their signs.
-#         x, dy = csne(R, S, vec(g))           # min ||g - Sx||_2
-#         xabs = abs.(x)
-#         et = sign.(x.*(xabs .> opttol))
-#         dyNorm = norm(dy,Inf)/λ        # dy = (g - Sx) / lambda
-    
-#         # Check if the trimmed active set is still optimal
-#         if any( et .!= e ) || (dyNorm / max(1,gNorm) > featol)
-#             R = qraddcol(S,R,a)
-#             S = [S a]
-#             push!(active, q)
-#             x = csne(R, S,vec(g))
-#             break
-#         end
-
-#         # The trimmed x is still optimal.
-#         k += 1
-#         nact -= 1
-#         state[q] = 0               # Mark this constraint as free.
-#         rNorm = norm(b - S*x)
-#         xNorm = norm(x,1)
-        
-#         # Grab the next canddate multiplier.
-#         xmin, qa = findmin(xabs)
-#     end  
-#     return (x,S,R,active,state)
-# end
-
-
-
-function trimx!(x,S,R,active,state,g,b,λ,featol,opttol, current_R_size)
+function trimx(x,S,R,active,state,g,b,λ,featol,opttol,loglevel)
 
     k = 0
     nact = length(active)
@@ -219,10 +165,7 @@ function trimx!(x,S,R,active,state,g,b,λ,featol,opttol, current_R_size)
         deleteat!(e, qa)
         S = [S[:, 1:qa-1] S[:, qa+1:end]]
         deleteat!(active, qa)
-        # R = qrdelcol(R, qa)
-
-        qrdelcol!(S,R, qa)
-        current_R_size -= 1
+        R = qrdelcol(R, qa)
 
         # Recompute the remaining multipliers and their signs.
         x, dy = csne(R, S, vec(g))           # min ||g - Sx||_2
@@ -232,8 +175,7 @@ function trimx!(x,S,R,active,state,g,b,λ,featol,opttol, current_R_size)
     
         # Check if the trimmed active set is still optimal
         if any( et .!= e ) || (dyNorm / max(1,gNorm) > featol)
-            qraddcol!(S,R,a, current_R_size)
-            current_R_size +=1
+            R = qraddcol(S,R,a)
             S = [S a]
             push!(active, q)
             x = csne(R, S,vec(g))
@@ -250,7 +192,7 @@ function trimx!(x,S,R,active,state,g,b,λ,featol,opttol, current_R_size)
         # Grab the next canddate multiplier.
         xmin, qa = findmin(xabs)
     end  
-    return (x,S,R,active,state, current_R_size)
+    return (x,S,R,active,state)
 end
 
 
@@ -279,8 +221,7 @@ function triminf(active::Vector, state::Vector, S::Matrix, R::Matrix,
         nact = nact - 1 
         S = S[:,1:size(S,2) .!= qa] # Delete column from S
         deleteat!(active, qa)   # Delete index from active set
-        # R = qrdelcol(R, qa)     # Recompute new QR factorization
-        R = qrdelcol(R, qa)
+        R = qrdelcol(R, qa)     # Recompute new QR factorization
         state[q] = 0            # Mark constraint as free
         x = csne(R, S, g)       # Recompute multipliers
 
