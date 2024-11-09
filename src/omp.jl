@@ -54,6 +54,13 @@ function asp_omp(
     
     m = length(b)
     n = length(z)
+
+    work = rand(size(A,2))
+    work2 = rand(size(A,2))
+    work3 = rand(size(A,2))
+    work4 = rand(size(A,2))
+    work5 = rand(size(A,1))
+
     nprodA = 0
     nprodAt = 1
 
@@ -89,6 +96,7 @@ function asp_omp(
     x = zeros(Float64, 0)
     zerovec = zeros(Float64, n)
     p = 0
+    cur_r_size = 0
 
     if norm(b, Inf) == 0
         r = zeros(m)
@@ -109,7 +117,8 @@ function asp_omp(
         state = zeros(Int, n)
     end
     if R === nothing
-        R = Matrix{Float64}(undef, 0, 0)
+        R = Matrix{Float64}(undef, size(A,2), size(A,2))
+        S = Matrix{Float64}(undef, size(A,1), size(A,2))
     end
 
     if actMax === nothing
@@ -130,13 +139,13 @@ function asp_omp(
             nprodAt += 1
             zmax = norm(z, Inf)
         else
-            x,y = csne(R, S, vec(b))
+            x,y = csne(R[1:cur_r_size, 1:cur_r_size], S[:,1:cur_r_size], vec(b))
             if norm(x, Inf) > 1e12
                 eFlag = :EXIT_SINGULAR_LS
                 break
             end
 
-            Sx = S * x
+            Sx = S[:,1:cur_r_size] * x
             r = b - Sx
         end
 
@@ -185,9 +194,9 @@ function asp_omp(
         nprodA += 1
         zerovec[p] = 0
 
-        R = qraddcol(S, R, a)  # Update R
-        S = hcat(S, a)  # Expand S, active
-
+        qraddcol!(S, R, a, cur_r_size, work, work2, work3, work4, work5)  # Update R
+        # S = hcat(S, a)  # Expand S, active
+        cur_r_size +=1 
         push!(tracer.iteration, itn)
         push!(tracer.lambda, zmax)
         sparse_x_full = SparseVector(n, copy(active), copy(x))
