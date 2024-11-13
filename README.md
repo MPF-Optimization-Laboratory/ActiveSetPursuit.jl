@@ -11,6 +11,8 @@
 
 $$\underset{x}{\text{minimize}} \hspace{0.5em}  \lambda \||x\||_1 + \frac{1}{2} \||Ax - b\||^2_2$$
 
+The package is a Julia port of a similar [Matlab `asp` package](https://github.com/MPF-Optimization-Laboratory/asp). 
+
 ### Implemented Algorithms:
 - Basis Pursuit Denoising
 - Orthogonal Matching Pursuit
@@ -21,9 +23,7 @@ $$\underset{x}{\text{minimize}} \hspace{0.5em}  \lambda \||x\||_1 + \frac{1}{2} 
 The package can be installed as follows:
 ```jlcon
 julia> ] add ActiveSetPursuit
-
 ```
-
 
 
 ## Example Usage
@@ -57,3 +57,7 @@ To extract the final iterate:
  ```jlcon
 x_final, λ_final = tracer[end]
 ```
+
+## Reference 
+
+Michael Friedlander and Michael Saunders. A dual active-set quadratic programming method for finding sparse least-squares solutions, DRAFT Technical Report, Dept of Computer Science, University of British Columbia, July 30, 2012; updated April 13, 2019.  [[PDF]](https://friedlander.io/files/pdf/bpprimal.pdf)
