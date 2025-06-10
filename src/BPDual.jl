@@ -100,6 +100,13 @@ function bpdual(
     # ------------------------------------------------------------------
     m, n = size(A)
 
+
+    work = rand(n)
+    work2 = rand(n)
+    work3 = rand(n)
+    work4 = rand(n)
+    work5 = rand(m)
+
     tracer = ASPTracer(
         Int[],                  # iteration
         Float64[],              # lambda
@@ -110,8 +117,8 @@ function bpdual(
         active = Vector{Int}([])
         state = Vector{Int}(zeros(Int, n))
         y = Vector{Float64}(zeros(Float64, m))
-        S = Matrix{Float64}(zeros(Float64, m, 0))
-        R = Matrix{Float64}(zeros(Float64, 0, 0))
+        S = Matrix{Float64}(zeros(Float64, m, n))
+        R = Matrix{Float64}(zeros(Float64, n, n))
     end
 
     if homotopy
@@ -171,6 +178,8 @@ function bpdual(
     numtrim = 0
     nprodA = 0
     nprodAt = 0
+    cur_r_size = 0
+
 
     # ------------------------------------------------------------------
     # Cold/warm-start initialization.
@@ -186,7 +195,7 @@ function bpdual(
         end
     else
         g = b - λ*y  # Compute steepest-descent dir
-        triminf(active, state, S, R, bl, bu, g)
+        active, state, S, R = triminf!(active, state, S, R, bl, bu, g)
         nact = length(active)
         x = zeros(nact)
         y = restorefeas(y, active, state, S, R, bl, bu)
@@ -211,25 +220,25 @@ function bpdual(
         sL, sU = infeasibilities(bl, bu, z)
         g = b - λ*y  # Steepest-descent direction
 
-        if isempty(R)
+        if isempty((@view R[1:cur_r_size,1:cur_r_size]))
             condS = 1
         else
-            rmin = minimum(diag(R))
-            rmax = maximum(diag(R))
+            rmin = minimum(diag((@view R[1:cur_r_size, 1:cur_r_size])))
+            rmax = maximum(diag((@view R[1:cur_r_size, 1:cur_r_size])))
             condS = rmax / rmin
         end
 
         if condS > 1e+10
             eFlag = :EXIT_SINGULAR_LS
             # Pad x with enough zeros to make it compatible with S.
-            npad = size(S, 2) - size(x, 1)
+            npad = size((@view S[:, 1:cur_r_size]), 2) - size(x, 1)
             x = [x; zeros(npad)]
         else
-            dx, dy = newtonstep(S, R, g, x, λ)
+            dx, dy = newtonstep((@view S[:,1:cur_r_size]), (@view R[1:cur_r_size, 1:cur_r_size]), g, x, λ)
             x .+= dx
         end
 
-        r = b - S*x
+        r = b - S[:,1:cur_r_size]*x
 
         # Print to log.
         yNorm = norm(y, 2)
@@ -273,7 +282,7 @@ function bpdual(
                 @info "\nOptimal solution found. Trimming multipliers..."
             end
             g = b - λin*y
-            trimx(x, S, R, active, state, g, b, λ, feaTol, optTol, loglevel)
+            trimx(x, (@view S[:, 1:cur_r_size]), (@view R[1:cur_r_size, 1:cur_r_size]), active, state, g, b, λ, feaTol, optTol, loglevel)
             numtrim = nact - length(active)
             nact = length(active)
         end
@@ -288,7 +297,7 @@ function bpdual(
         p = q = 0
 
         if homotopy
-            x, dy, dz, step, λ, p = htpynewlam(active, state, A, R, S, x, y, sL, sU, λ, lamFinal)
+            x, dy, dz, step, λ, p = htpynewlam(active, state, A, (@view R[1:cur_r_size, 1:cur_r_size]), (@view S[:,1:cur_r_size]), x, y, sL, sU, λ, lamFinal)
             nprodAt += 1
         else
             if norm(dy, Inf) < eps()        
@@ -339,8 +348,9 @@ function bpdual(
             a = A * zerovec
             nprodA += 1
             zerovec[p] = 0
-            R = qraddcol(S, R, a)
-            S = [S a]
+            qraddcol!(S, R, a, cur_r_size, work, work2, work3, work4, work5)  # Update R
+            cur_r_size +=1             
+            # S = [S a]
             push!(active, p)
             push!(x, 0)
         else
@@ -358,10 +368,12 @@ function bpdual(
                 _, qa = findmax(abs.(x .* dropa))
                 q = active[qa]
                 state[q] = 0
-                S = S[:, 1:nact .!= qa]
+                # S = S[:, 1:nact .!= qa]
                 deleteat!(active, qa)
                 deleteat!(x, qa)
-                R = qrdelcol(R, qa)
+                # R = qrdelcol(R, qa)
+                qrdelcol!(S, R, qa)
+                cur_r_size -=1           
             else
                 eFlag = :EXIT_OPTIMAL
             end

@@ -1,16 +1,17 @@
-struct OMPTracer{T}
-    iteration::Vector{Int}
-    lambda::Vector{T}
-    solution::Vector{SparseVector{T}} 
-end
+# struct OMPTracer{T}
+#     iteration::Vector{Int}
+#     lambda::Vector{T}
+#     active::Vector{Vector{Int}}  # Store active indices instead of full sparse vectors
+#     values::Vector{Vector{T}}    # Store corresponding values for active indices
+# end
 
-Base.length(t::OMPTracer) = length(t.iteration)
+# Base.length(t::OMPTracer) = length(t.iteration)
 
-function Base.getindex(t::OMPTracer, i::Integer)
-    return t.solution[i], t.lambda[i]
-end
+# function Base.getindex(t::OMPTracer, i::Integer)
+#     return t.active[i], t.values[i], t.lambda[i]
+# end
 
-Base.lastindex(t::OMPTracer) = lastindex(t.iteration)
+# Base.lastindex(t::OMPTracer) = lastindex(t.iteration)
 
 @doc raw"""
     ```julia
@@ -36,7 +37,6 @@ function asp_omp(
     b::Vector,
     λin::Real;
     active::Union{Nothing, Vector{Int}} = nothing,  
-    state::Union{Nothing, Vector{Int}} = nothing,
     S::Matrix{Float64} = Matrix{Float64}(undef, size(A, 1), 0),
     R::Union{Nothing, Matrix{Float64}} = nothing,
     loglevel::Int = 1,
@@ -46,27 +46,32 @@ function asp_omp(
     optTol::Real = 1e-05,
     gapTol::Real = 1e-06,
     pivTol::Real = 1e-12,
-    actMax::Real = Inf)
+    actMax::Union{Real, Nothing} = nothing,
+    traceFlag::Bool = false) 
     
-    # Start the clock and size up the problem.
     time0 = time()
 
-    z = A' * b
-    
+    A_T = A'
+    z = A_T * b
+    int_ac =0 
     m = length(b)
     n = length(z)
+    T = eltype(A)
+
+    work = Vector{T}(undef, size(A, 2))
+    work2 = Vector{T}(undef, size(A, 2))
+    work3 = Vector{T}(undef, size(A, 2))
+    work4 = Vector{T}(undef, size(A, 2))
+    work5 = Vector{T}(undef, size(A, 1))
+    
     nprodA = 0
     nprodAt = 1
 
-    # Initialize the tracer
-
-    tracer = OMPTracer(
+    tracer = ASPTracer(
         Int[],                  # iteration
         Float64[],              # lambda
         Vector{SparseVector{Float64}}() # now stores full sparse solutions
     )
-
-    # Print log header.
 
     if loglevel > 0
         @info "-"^124
@@ -76,6 +81,7 @@ function asp_omp(
         @info "-"^124
     end
 
+
     # Initialize local variables.
     EXIT_INFO = Dict(
         :EXIT_OPTIMAL => "Optimal solution found -- full Newton step",
@@ -84,6 +90,7 @@ function asp_omp(
         :EXIT_LAMBDA => "Reached minimum value of lambda",
         :EXIT_RHS_ZERO => "b = 0. The solution is x = 0",
         :EXIT_UNCONSTRAINED => "Unconstrained solution r = b is optimal",
+        :EXIT_ACTMAX => "Max no. of active constraints reached",
         :EXIT_UNKNOWN => "unknown exit"
     )
 
@@ -92,8 +99,8 @@ function asp_omp(
     x = zeros(Float64, 0)
     zerovec = zeros(Float64, n)
     p = 0
+    cur_r_size = 0
 
-    # Quick exit if the RHS is zero.
     if norm(b, Inf) == 0
         r = zeros(m)
         eFlag = :EXIT_RHS_ZERO
@@ -106,18 +113,37 @@ function asp_omp(
         eFlag = :EXIT_UNCONSTRAINED
     end
 
-    if eFlag != :EXIT_UNKNOWN || active === nothing
+    if active === nothing
         active = Vector{Int}([])
+    else
+        active = active
+        R = Matrix{Float64}(undef, size(A, 2), size(A, 2))
+        S = Matrix{Float64}(undef, size(A, 1), size(A, 2))
+        int_ac= length(active)
+        cur_r_size = length(active)
+        S[:, 1:cur_r_size] .= A[:, active]  
+        _, R_ = qr(A[:, active])            
+        # Use regular indexing for R
+        println(size(R_))
+        R[1:cur_r_size, 1:cur_r_size] .= R_            # Copy values into R
+        itn = 1
+        
     end
-    if state === nothing
-        state = zeros(Int, n)
-    end
+    # if state === nothing
+    #     state = zeros(Int, n)
+    # end
     if R === nothing
-        R = Matrix{Float64}(undef, 0, 0)
+        R = Matrix{Float64}(undef, size(A,2), size(A,2))
+        S = Matrix{Float64}(undef, size(A,1), size(A,2))
     end
 
-    @info @sprintf("%4s  %8s %12s %12s %12s", "Itn", "Var", "λ", "rNorm", "xNorm")
+    if actMax === nothing
+        actMax = size(A, 2)
+    end
 
+    if loglevel>0
+        @info @sprintf("%4s  %8s %12s %12s %12s", "Itn", "Var", "λ", "rNorm", "xNorm")
+    end
 
     # Main loop.
     while true
@@ -125,24 +151,26 @@ function asp_omp(
         if itn == 0
             x = Float64[]
             r = b
-            z = A' * r
+            z = A_T * r
             nprodAt += 1
             zmax = norm(z, Inf)
         else
-            x,y = csne(R, S, vec(b))
+            x,y = csne( (@view R[1:cur_r_size, 1:cur_r_size]), 
+                        (@view S[:,1:cur_r_size]), vec(b))
             if norm(x, Inf) > 1e12
                 eFlag = :EXIT_SINGULAR_LS
                 break
             end
-
-            Sx = S * x
+            Sx = (@view S[:,1:cur_r_size]) * x
             r = b - Sx
         end
 
         rNorm = norm(r, 2)
         xNorm = norm(x, 1)
 
-        @info @sprintf("%4i  %8i %12.5e %12.5e %12.5e", itn, p, zmax, rNorm, xNorm)
+        if loglevel>0
+            @info @sprintf("%4i  %8i %12.5e %12.5e %12.5e", itn, p, zmax, rNorm, xNorm)
+        end
 
         # Check exit conditions.
         if eFlag != :EXIT_UNKNOWN
@@ -153,8 +181,10 @@ function asp_omp(
             eFlag = :EXIT_OPTIMAL
         elseif itn >= itnMax
             eFlag = :EXIT_TOO_MANY_ITNS
+        elseif itn-1 == actMax- int_ac
+            eFlag = :EXIT_ACTMAX
         end
-        
+
         if eFlag != :EXIT_UNKNOWN
             break
         end
@@ -163,38 +193,42 @@ function asp_omp(
         itn += 1
 
         # Find step to the nearest inactive constraint
-        z = A' * r
-
+        z = A_T * r
+        # mul!(z, A', r)
         nprodAt += 1
         zmax, p = findmax(abs.(z))
+        push!(active, p)
 
-        if z[p] < 0
-            state[p] = -1
-        else
-            state[p] = 1
-        end
+        # if z[p] < 0
+        #     state[p] = -1
+        # else
+        #     state[p] = 1
+        # end
 
         zerovec[p] = 1   # Extract a = A[:, p]
-        a = A * zerovec
+        a = A * zerovec          # Compute A[:, p]
 
         nprodA += 1
         zerovec[p] = 0
 
-        R = qraddcol(S, R, a)  # Update R
-        S = hcat(S, a)  # Expand S, active
+        qraddcol!(S, R, a, cur_r_size, work, work2, work3, work4, work5)  # Update R
+        # S = hcat(S, a)  # Expand S, active
+        cur_r_size +=1 
 
-        push!(tracer.iteration, itn)
-        push!(tracer.lambda, zmax)
-        sparse_x_full = SparseVector(n, copy(active), copy(x))
-        push!(tracer.solution, copy(sparse_x_full))
-        
-        push!(active, p)
+        if traceFlag
+            push!(tracer.iteration, itn)
+            push!(tracer.lambda, zmax)
+            sparse_x_full = spzeros(n)
+            sparse_x_full[copy(active)] = copy(x)  
+            push!(tracer.solution, copy(sparse_x_full))
+        end
 
     end #while true
 
     push!(tracer.iteration, itn)
     push!(tracer.lambda, zmax)
-    sparse_x_full = SparseVector(n, copy(active), copy(x))
+    sparse_x_full = spzeros(n)
+    sparse_x_full[copy(active)] = copy(x)  
     push!(tracer.solution, copy(sparse_x_full))
 
     tottime = time() - time0
