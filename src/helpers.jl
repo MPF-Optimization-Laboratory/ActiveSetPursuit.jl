@@ -201,35 +201,47 @@ end
 # ----------------------------------------------------------------------
 # Trim working constraints with "infinite" bounds.
 # ----------------------------------------------------------------------
-
-function triminf(active::Vector, state::Vector, S::Matrix, R::Matrix,
-    bl::Vector, bu::Vector, g::Vector, b::Vector)
-
+function triminf!(
+    active::Vector{Int},
+    state::Vector{Int},
+    S::Matrix{Float64},
+    R,
+    bl::Vector{Float64},
+    bu::Vector{Float64},
+)
     bigbnd = 1e10
-    nact = length(active)
 
-    tlistbl = find( state[active] .== -1 & bl[active] .< -bigbnd )
-    tlistbu = find( state[active] .== +1 & bu[active] .> +bigbnd )
-    tlist   = [tlistbl; tlistbu]
+    tlist = [i for i in active if
+        (state[i] == -1 && bl[i] < -bigbnd) ||
+        (state[i] ==  1 && bu[i] >  bigbnd)
+    ]
 
     if isempty(tlist)
-        return
+        return active, state, S, R
     end
 
-    for q in tlist
-        qa = active[q]          
-        nact = nact - 1 
-        S = S[:,1:size(S,2) .!= qa] # Delete column from S
-        deleteat!(active, qa)   # Delete index from active set
-        R = qrdelcol(R, qa)     # Recompute new QR factorization
-        state[q] = 0            # Mark constraint as free
-        x = csne(R, S, g)       # Recompute multipliers
+    for q in sort(tlist; rev=true)
+        qa = active[q]
 
-        rNorm = norm(b - S*x)
-        xNorm = norm(x, 1)
+        if qa == 1
+            S = S[:, 2:end]
+        elseif qa == size(S, 2)
+            S = S[:, 1:end-1]
+        else
+            S = hcat(S[:, 1:qa-1], S[:, qa+1:end])
         end
 
+        deleteat!(active, q)
+
+        R = qrdelcol(R, qa)
+
+        state[q] = 0
+    end
+
+    return active, state, S, R
 end
+
+
 
 
 ## G) find_step
