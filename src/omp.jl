@@ -1,18 +1,3 @@
-# struct OMPTracer{T}
-#     iteration::Vector{Int}
-#     lambda::Vector{T}
-#     active::Vector{Vector{Int}}  # Store active indices instead of full sparse vectors
-#     values::Vector{Vector{T}}    # Store corresponding values for active indices
-# end
-
-# Base.length(t::OMPTracer) = length(t.iteration)
-
-# function Base.getindex(t::OMPTracer, i::Integer)
-#     return t.active[i], t.values[i], t.lambda[i]
-# end
-
-# Base.lastindex(t::OMPTracer) = lastindex(t.iteration)
-
 @doc raw"""
     ```julia
     asp_omp(A,B)```
@@ -197,7 +182,6 @@ function asp_omp(
         # mul!(z, A', r)
         nprodAt += 1
         zmax, p = findmax(abs.(z))
-        push!(active, p)
 
         # if z[p] < 0
         #     state[p] = -1
@@ -222,6 +206,7 @@ function asp_omp(
             sparse_x_full[copy(active)] = copy(x)  
             push!(tracer.solution, copy(sparse_x_full))
         end
+        push!(active, p)
 
     end #while true
 
