@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Home · ActiveSetPursuit.jl</title><meta name="title" content="Home · ActiveSetPursuit.jl"/><meta property="og:title" content="Home · ActiveSetPursuit.jl"/><meta property="twitter:title" content="Home · ActiveSetPursuit.jl"/><meta name="description" content="Documentation for ActiveSetPursuit.jl."/><meta property="og:description" content="Documentation for ActiveSetPursuit.jl."/><meta property="twitter:description" content="Documentation for ActiveSetPursuit.jl."/><meta property="og:url" content="https://MPF-Optimization-Laboratory.github.io/ActiveSetPursuit.jl/"/><meta property="twitter:url" content="https://MPF-Optimization-Laboratory.github.io/ActiveSetPursuit.jl/"/><link rel="canonical" href="https://MPF-Optimization-Laboratory.github.io/ActiveSetPursuit.jl/"/><script data-outdated-warner src="assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script><script src="search_index.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href>ActiveSetPursuit.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li class="is-active"><a class="tocitem" href>Home</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Home</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Home</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/MPF-Optimization-Laboratory/ActiveSetPursuit.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/MPF-Optimization-Laboratory/ActiveSetPursuit.jl/blob/main/docs/src/index.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="ActiveSetPursuit"><a class="docs-heading-anchor" href="#ActiveSetPursuit">ActiveSetPursuit</a><a id="ActiveSetPursuit-1"></a><a class="docs-heading-anchor-permalink" href="#ActiveSetPursuit" title="Permalink"></a></h1><p>Documentation for <a href="https://github.com/MPF-Optimization-Laboratory/ActiveSetPursuit.jl">ActiveSetPursuit</a>.</p><ul><li><a href="#ActiveSetPursuit.asp_bpdn-Tuple{Any, Any, Any}"><code>ActiveSetPursuit.asp_bpdn</code></a></li><li><a href="#ActiveSetPursuit.asp_omp-Tuple{Union{LinearOperators.AbstractLinearOperator, AbstractMatrix}, Vector, Real}"><code>ActiveSetPursuit.asp_omp</code></a></li><li><a href="#ActiveSetPursuit.bpdual-Tuple{Union{LinearOperators.AbstractLinearOperator, AbstractMatrix}, Vector, Real, Vector, Vector}"><code>ActiveSetPursuit.bpdual</code></a></li></ul><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="ActiveSetPursuit.asp_bpdn-Tuple{Any, Any, Any}" href="#ActiveSetPursuit.asp_bpdn-Tuple{Any, Any, Any}"><code>ActiveSetPursuit.asp_bpdn</code></a> — <span class="docstring-category">Method</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><p><code>julia     asp_bpdn(A,B)</code>     solves the basis pursuit problem.</p><pre><code class="nohighlight hljs">(BP)
+```math 
+\min_x   \|x \|_1 
+```
+  subject to 
+```math 
+    Ax = B.
+```
+```julia
+asp_bpdn(A,B,λ)
+```
+solves the basis pursuit denoise problem
+
+(BPDN) 
+```math 
+\min_x  \frac{1}{2} \|Ax - B\|_2^2 + λ \|x\|_1
+```</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/MPF-Optimization-Laboratory/ActiveSetPursuit.jl/blob/b73d350d1dc4189fc06a60a28b9a383e27b84416/src/bpdn.jl#L2-L24">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="ActiveSetPursuit.asp_omp-Tuple{Union{LinearOperators.AbstractLinearOperator, AbstractMatrix}, Vector, Real}" href="#ActiveSetPursuit.asp_omp-Tuple{Union{LinearOperators.AbstractLinearOperator, AbstractMatrix}, Vector, Real}"><code>ActiveSetPursuit.asp_omp</code></a> — <span class="docstring-category">Method</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">```julia
+asp_omp(A,B)```
+Orthogonal matching pursuit for sparse 
+```math 
+Ax=b
+```
+Applies the orthogonal matching pursuit (OMP) algorithm to
+estimate a sparse solution of the underdetermined system `Ax=b`.
+
+(BP)   
+```math 
+\min_x  \|x\|_1  
+```
+subject to  
+```math 
+Ax = b.
+```</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/MPF-Optimization-Laboratory/ActiveSetPursuit.jl/blob/b73d350d1dc4189fc06a60a28b9a383e27b84416/src/omp.jl#L1-L19">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="ActiveSetPursuit.bpdual-Tuple{Union{LinearOperators.AbstractLinearOperator, AbstractMatrix}, Vector, Real, Vector, Vector}" href="#ActiveSetPursuit.bpdual-Tuple{Union{LinearOperators.AbstractLinearOperator, AbstractMatrix}, Vector, Real, Vector, Vector}"><code>ActiveSetPursuit.bpdual</code></a> — <span class="docstring-category">Method</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><p><code>julia     function bpdual(A, b, λin, bl, bu; kwargs...)</code> </p><pre><code class="nohighlight hljs">Solve the optimization problem:
+
+DP:
+```math 
+    \min_{y} \left( -b^T y + \frac{1}{2} λ y^T y \right)
+```
+    subject to:
+ ```math 
+    bl \leq A^T y \leq bu
+    ```
+
+using given `A`, `b`, `bl`, `bu`, and `λ`. When `bl = -e` and `bu = e = ones(n, 1)`,
+DP is the dual Basis Pursuit problem:
+
+BPdual:
+
+```math 
+\max_{y} \left( b^T y - \frac{1}{2} λ y^T y \right)
+```
+    subject to
+    
+```math
+    \|A^T y\|_{\infty} \leq 1.
+```
+
+* Input
+* `A` : `m`-by-`n` explicit matrix or linear operator.
+* `b` : `m`-vector.
+* `λin` : Nonnegative scalar.
+* `bl`, `bu` : `n`-vectors (bl lower bound, bu upper bound).
+* `active`, `state`, `y`, `S`, `R` : May be empty or output from `BPdual` with a previous value of `λ`.
+* `loglevel` : Logging level.
+* `coldstart` : Boolean indicating if a cold start should be used.
+* `homotopy` : Boolean indicating if homotopy should be used.
+* `λmin` : Minimum value for `λ`.
+* `trim` : Number of constraints to trim.
+* `itnMax` : Maximum number of iterations.
+* `feaTol` : Feasibility tolerance.
+* `optTol` : Optimality tolerance.
+* `gapTol` : Gap tolerance.
+* `pivTol` : Pivot tolerance.
+* `actMax` : Maximum number of active constraints.
+
+* Output
+* `tracer` : A structure to store trace information at each iteration of the optimization process.
+    It contains:
+        * `active::Vector{Int}`: The indices of the active constraints.
+        * `activesoln::Vector{T}`: The solutions corresponding to the current active set.
+        * `lambda::Vector{T}`: Lambda values.
+        * `N::Int`: The total number of variables in the solution vector.</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/MPF-Optimization-Laboratory/ActiveSetPursuit.jl/blob/b73d350d1dc4189fc06a60a28b9a383e27b84416/src/BPDual.jl#L15-L69">source</a></section></article></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Tuesday 22 July 2025 20:01">Tuesday 22 July 2025</span>. Using Julia version 1.11.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
