@@ -192,7 +192,7 @@ function trimx(x,S,R,active,state,g,b,λ,featol,opttol,loglevel)
         # Grab the next canddate multiplier.
         xmin, qa = findmin(xabs)
     end  
-    return (x,S,R,active,state)
+    return x, active
 end
 
 

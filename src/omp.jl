@@ -32,7 +32,8 @@ function asp_omp(
     gapTol::Real = 1e-06,
     pivTol::Real = 1e-12,
     actMax::Union{Real, Nothing} = nothing,
-    traceFlag::Bool = false) 
+    traceFlag::Bool = false,
+    refactor_freq::Int = 1000) 
     
     time0 = time()
 
@@ -198,7 +199,10 @@ function asp_omp(
         qraddcol!(S, R, a, cur_r_size, work, work2, work3, work4, work5)  # Update R
         # S = hcat(S, a)  # Expand S, active
         cur_r_size +=1 
-
+        if itn % refactor_freq == 0 && cur_r_size > 0
+            F = qr!(S[:, 1:cur_r_size])          
+            @views R[1:cur_r_size, 1:cur_r_size] = F.R
+        end
         if traceFlag
             push!(tracer.iteration, itn)
             push!(tracer.lambda, zmax)
@@ -218,7 +222,7 @@ function asp_omp(
 
     tottime = time() - time0
     if loglevel > 0
-        @info @sprintf("\nEXIT BPdual -- %s\n", EXIT_INFO[eFlag])
+        @info @sprintf("\nEXIT OMP -- %s\n", EXIT_INFO[eFlag])
         @info @sprintf("%-20s: %8i", "Products with A", nprodA)
         @info @sprintf("%-20s: %8i", "Products with At", nprodAt)
         @info @sprintf("%-20s: %8.1e", "Solution time (sec)", tottime)

@@ -11,7 +11,15 @@ function Base.getindex(t::ASPTracer, i::Integer)
 end
 
 Base.lastindex(t::ASPTracer) = lastindex(t.iteration)
+function Base.show(io::IO, t::ASPTracer)
+    nsteps = length(t.iteration)
+    nvars = isempty(t.solution) ? 0 : length(t.solution[end].nzind)
+    println(io, "ASPTracer with $nvars active variables at final step.")
+end
 
+function Base.show(io::IO, ::MIME"text/plain", t::ASPTracer)
+    Base.show(io, t)
+end
 @doc raw"""
 ```julia
     function bpdual(A, b, λin, bl, bu; kwargs...)``` 
@@ -89,7 +97,8 @@ function bpdual(
     gapTol::Real = 1e-06,
     pivTol::Real = 1e-12,
     actMax::Real = Inf,
-    traceFlag::Bool = false
+    traceFlag::Bool = false,
+    refactor_freq::Int = 1000
     )
 
     # Start
@@ -282,9 +291,8 @@ function bpdual(
                 @info "\nOptimal solution found. Trimming multipliers..."
             end
             g = b - λin*y
-            trimx(x, (@view S[:, 1:cur_r_size]), (@view R[1:cur_r_size, 1:cur_r_size]), active, state, g, b, λ, feaTol, optTol, loglevel)
-            numtrim = nact - length(active)
-            nact = length(active)
+            x, active = trimx(x, (@view S[:,1:cur_r_size]), (@view R[1:cur_r_size, 1:cur_r_size]), active, state, g, b, λ, feaTol, optTol, loglevel)
+            break
         end
 
         # Act on any live exit conditions.
@@ -349,7 +357,11 @@ function bpdual(
             nprodA += 1
             zerovec[p] = 0
             qraddcol!(S, R, a, cur_r_size, work, work2, work3, work4, work5)  # Update R
-            cur_r_size +=1             
+            cur_r_size +=1     
+            if itn % refactor_freq == 0 && cur_r_size > 0
+                F = qr!(S[:, 1:cur_r_size])          
+                @views R[1:cur_r_size, 1:cur_r_size] = F.R
+            end        
             # S = [S a]
             push!(active, p)
             push!(x, 0)
@@ -373,7 +385,11 @@ function bpdual(
                 deleteat!(x, qa)
                 # R = qrdelcol(R, qa)
                 qrdelcol!(S, R, qa)
-                cur_r_size -=1           
+                cur_r_size -=1      
+                if itn % refactor_freq == 0 && cur_r_size > 0
+                    F = qr!(S[:, 1:cur_r_size])         
+                    @views R[1:cur_r_size, 1:cur_r_size] = F.R
+                end     
             else
                 eFlag = :EXIT_OPTIMAL
             end

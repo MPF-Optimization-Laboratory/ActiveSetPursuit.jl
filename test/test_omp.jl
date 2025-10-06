@@ -8,7 +8,7 @@ using Test, LinearAlgebra, Random, SparseArrays, ActiveSetPursuit, LinearOperato
 function test_omp()
     m = 600
     n = 2560
-    k = 20
+    k = 100
     
     # Generate sparse solution
     p = randperm(n)[1:k]  # Position of nonzeros in x
@@ -21,7 +21,7 @@ function test_omp()
     b = A * x
     
     # Solve the basis pursuit problem
-    tracer = asp_omp(A, b, 0.0; loglevel =0);
+    tracer = asp_omp(A, b, 0.0; loglevel =0, refactor_freq =20);
 
     xx, _ = tracer[end]
     pFeas = norm(A * xx - b, Inf) / max(1, norm(xx, Inf))
