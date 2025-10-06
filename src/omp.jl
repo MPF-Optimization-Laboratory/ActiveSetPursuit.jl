@@ -134,6 +134,20 @@ function asp_omp(
     # Main loop.
     while true
         # Compute dual obj gradient g, search direction dy, and residual r.
+
+
+        if isempty((@view R[1:cur_r_size,1:cur_r_size]))
+            condS = 1
+        else
+            rmin = minimum(diag((@view R[1:cur_r_size, 1:cur_r_size])))
+            rmax = maximum(diag((@view R[1:cur_r_size, 1:cur_r_size])))
+            condS = rmax / rmin
+        end
+        
+        if condS > 1e+10
+            eFlag = :EXIT_SINGULAR_LS
+        end
+            
         if itn == 0
             x = Float64[]
             r = b
