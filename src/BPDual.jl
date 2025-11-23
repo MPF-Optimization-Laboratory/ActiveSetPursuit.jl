@@ -14,7 +14,7 @@ Base.lastindex(t::ASPTracer) = lastindex(t.iteration)
 function Base.show(io::IO, t::ASPTracer)
     nsteps = length(t.iteration)
     nvars = isempty(t.solution) ? 0 : length(t.solution[end].nzind)
-    println(io, "ASPTracer with $nvars active variables at final step.")
+    print(io, "ASPTracer(maxactive = $nvars, nsteps = $nsteps)")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", t::ASPTracer)
@@ -110,11 +110,11 @@ function bpdual(
     m, n = size(A)
 
 
-    work = rand(n)
-    work2 = rand(n)
-    work3 = rand(n)
-    work4 = rand(n)
-    work5 = rand(m)
+    work  = Vector{Float64}(undef, n)
+    work2 = Vector{Float64}(undef, n)
+    work3 = Vector{Float64}(undef, n)
+    work4 = Vector{Float64}(undef, n)
+    work5 = Vector{Float64}(undef, m)    
 
     tracer = ASPTracer(
         Int[],                  # iteration
@@ -187,14 +187,14 @@ function bpdual(
     numtrim = 0
     nprodA = 0
     nprodAt = 0
-    cur_r_size = 0
-
 
     # ------------------------------------------------------------------
     # Cold/warm-start initialization.
     # ------------------------------------------------------------------
     if coldstart
         x = zeros(0)
+        # cur_r_size = 0
+        nact = 0
         if homotopy
             y = b / λ
             z = z / λ    
@@ -210,6 +210,7 @@ function bpdual(
         y = restorefeas(y, active, state, S, R, bl, bu)
         z = A'*y
         nprodAt += 1
+        # cur_r_size = nact
     end
 
     sL, sU = infeasibilities(bl, bu, vec(z))
@@ -229,26 +230,32 @@ function bpdual(
         sL, sU = infeasibilities(bl, bu, z)
         g = b - λ*y  # Steepest-descent direction
 
-        if isempty((@view R[1:cur_r_size,1:cur_r_size]))
+        # if isempty((@view R[1:cur_r_size,1:cur_r_size]))
+        if isempty((@view R[1:nact,1:nact]))
             condS = 1
         else
-            rmin = minimum(diag((@view R[1:cur_r_size, 1:cur_r_size])))
-            rmax = maximum(diag((@view R[1:cur_r_size, 1:cur_r_size])))
+            # rmin = minimum(diag((@view R[1:cur_r_size, 1:cur_r_size])))
+            # rmax = maximum(diag((@view R[1:cur_r_size, 1:cur_r_size])))
+            rmin = minimum(diag((@view R[1:nact, 1:nact])))
+            rmax = maximum(diag((@view R[1:nact, 1:nact])))
             condS = rmax / rmin
         end
 
         if condS > 1e+10
             eFlag = :EXIT_SINGULAR_LS
             # Pad x with enough zeros to make it compatible with S.
-            npad = size((@view S[:, 1:cur_r_size]), 2) - size(x, 1)
+            # npad = size((@view S[:, 1:cur_r_size]), 2) - size(x, 1)
+            npad = size((@view S[:, 1:nact]), 2) - size(x, 1)
             x = [x; zeros(npad)]
         else
-            dx, dy = newtonstep((@view S[:,1:cur_r_size]), (@view R[1:cur_r_size, 1:cur_r_size]), g, x, λ)
+            dx, dy = newtonstep((@view S[:,1:nact]), (@view R[1:nact, 1:nact]), g, x, λ)
+            # dx, dy = newtonstep((@view S[:,1:cur_r_size]), (@view R[1:cur_r_size, 1:cur_r_size]), g, x, λ)
             x .+= dx
         end
 
-        r = b - S[:,1:cur_r_size]*x
-
+        # r = b - S[:,1:cur_r_size]*x
+        r = b - S[:,1:nact]*x
+        
         # Print to log.
         yNorm = norm(y, 2)
         rNorm = norm(r, 2)
@@ -291,7 +298,8 @@ function bpdual(
                 @info "\nOptimal solution found. Trimming multipliers..."
             end
             g = b - λin*y
-            x, active = trimx(x, (@view S[:,1:cur_r_size]), (@view R[1:cur_r_size, 1:cur_r_size]), active, state, g, b, λ, feaTol, optTol, loglevel)
+            x, active = trimx(x, (@view S[:,1:nact]), (@view R[1:nact, 1:nact]), active, state, g, b, λ, feaTol, optTol, loglevel)
+            # x, active = trimx(x, (@view S[:,1:cur_r_size]), (@view R[1:cur_r_size, 1:cur_r_size]), active, state, g, b, λ, feaTol, optTol, loglevel)
             break
         end
 
@@ -305,7 +313,8 @@ function bpdual(
         p = q = 0
 
         if homotopy
-            x, dy, dz, step, λ, p = htpynewlam(active, state, A, (@view R[1:cur_r_size, 1:cur_r_size]), (@view S[:,1:cur_r_size]), x, y, sL, sU, λ, lamFinal)
+            # x, dy, dz, step, λ, p = htpynewlam(active, state, A, (@view R[1:cur_r_size, 1:cur_r_size]), (@view S[:,1:cur_r_size]), x, y, sL, sU, λ, lamFinal)
+            x, dy, dz, step, λ, p = htpynewlam(active, state, A, (@view R[1:nact, 1:nact]), (@view S[:,1:nact]), x, y, sL, sU, λ, lamFinal)
             nprodAt += 1
         else
             if norm(dy, Inf) < eps()        
@@ -356,12 +365,20 @@ function bpdual(
             a = A * zerovec
             nprodA += 1
             zerovec[p] = 0
-            qraddcol!(S, R, a, cur_r_size, work, work2, work3, work4, work5)  # Update R
-            cur_r_size +=1     
-            if itn % refactor_freq == 0 && cur_r_size > 0
-                F = qr!(S[:, 1:cur_r_size])          
-                @views R[1:cur_r_size, 1:cur_r_size] = F.R
-            end        
+            # qraddcol!(S, R, a, cur_r_size, work, work2, work3, work4, work5)  # Update R
+
+            qraddcol!(S, R, a, nact, work, work2, work3, work4, work5)  # Update R
+            
+            # cur_r_size +=1     
+            nact +=1
+            if itn % refactor_freq == 0 && nact > 0
+                F = qr!(S[:, 1:nact])          
+                @views R[1:nact, 1:nact] = F.R
+            end     
+            # if itn % refactor_freq == 0 && cur_r_size > 0
+            #     F = qr!(S[:, 1:cur_r_size])          
+            #     @views R[1:cur_r_size, 1:cur_r_size] = F.R
+            # end           
             # S = [S a]
             push!(active, p)
             push!(x, 0)
@@ -385,11 +402,16 @@ function bpdual(
                 deleteat!(x, qa)
                 # R = qrdelcol(R, qa)
                 qrdelcol!(S, R, qa)
-                cur_r_size -=1      
-                if itn % refactor_freq == 0 && cur_r_size > 0
-                    F = qr!(S[:, 1:cur_r_size])         
-                    @views R[1:cur_r_size, 1:cur_r_size] = F.R
-                end     
+                # cur_r_size -=1
+                nact    -=1
+                # if itn % refactor_freq == 0 && cur_r_size > 0
+                #     F = qr!(S[:, 1:cur_r_size])         
+                #     @views R[1:cur_r_size, 1:cur_r_size] = F.R
+                # end     
+                if itn % refactor_freq == 0 && nact > 0
+                    F = qr!(S[:, 1:nact])         
+                    @views R[1:nact, 1:nact] = F.R
+                end   
             else
                 eFlag = :EXIT_OPTIMAL
             end
