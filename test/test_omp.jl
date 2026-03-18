@@ -24,7 +24,9 @@ function test_omp()
     tracer = asp_omp(A, b, 0.0; loglevel =0, refactor_freq =20);
 
     xx, _ = tracer[end]
-    pFeas = norm(A * xx - b, Inf) / max(1, norm(xx, Inf))
+    
+    x_recovered = sparsevec(xx.active, xx.values, n)
+    pFeas = norm(A * x_recovered - b, Inf) / max(1, norm(x_recovered, Inf))
     @test pFeas <= 1e-6
 
     # ------------------------
@@ -38,7 +40,9 @@ function test_omp()
     tracer_op = asp_omp(OP, b_op, 0.0; loglevel =0);
 
     xx_op, _ = tracer_op[end]
-    pFeas_op = norm(OP * xx_op - b_op, Inf) / max(1, norm(xx_op, Inf))
+    xop_recovered = sparsevec(xx_op.active, xx_op.values, n)
+
+    pFeas_op = norm(OP * xop_recovered - b_op, Inf) / max(1, norm(xop_recovered, Inf))
     @test pFeas_op <= 1e-6
 end
 

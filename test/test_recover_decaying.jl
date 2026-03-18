@@ -23,7 +23,8 @@ function test_recover_decaying()
 
     # Solve the basis pursuit problem
     tracer = asp_homotopy(A, b, min_lambda = 0.0, itnMax = 400, loglevel =0) 
-    xs, λ = tracer[end]
+    xs_, _ = tracer[end]
+    xs = sparsevec(xs_.active, xs_.values, n)
 
     cumulative_norm = cumsum(abs.(x[sortperm(abs.(x), rev=true)]))
     indices_to_recover = sortperm(abs.(x), rev=true)[1:findfirst(cumulative_norm .>= threshold_percentage * cumulative_norm[end])]
