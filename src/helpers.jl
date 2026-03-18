@@ -146,7 +146,7 @@ end
 # products with A. (Implicitly we're assuming that A has a small norm.)
 # ----------------------------------------------------------------------
 
-function trimx(x,S,R,active,state,g,b,λ,featol,opttol,loglevel)
+function trimx(x,S,R,active,state,g,λ,featol,opttol)
 
     k = 0
     nact = length(active)
@@ -162,9 +162,11 @@ function trimx(x,S,R,active,state,g,b,λ,featol,opttol,loglevel)
         xsmall = x[qa] # Value of candidate multiplier
 
         # Trim quantities related to the small multiplier.
+
         deleteat!(e, qa)
         S = [S[:, 1:qa-1] S[:, qa+1:end]]
         deleteat!(active, qa)
+        deleteat!(x, qa)        
         R = qrdelcol(R, qa)
 
         # Recompute the remaining multipliers and their signs.
@@ -178,7 +180,7 @@ function trimx(x,S,R,active,state,g,b,λ,featol,opttol,loglevel)
             R = qraddcol(S,R,a)
             S = [S a]
             push!(active, q)
-            x = csne(R, S,vec(g))
+            x, _ = csne(R, S, vec(g))
             break
         end
 
@@ -186,13 +188,11 @@ function trimx(x,S,R,active,state,g,b,λ,featol,opttol,loglevel)
         k += 1
         nact -= 1
         state[q] = 0               # Mark this constraint as free.
-        rNorm = norm(b - S*x)
-        xNorm = norm(x,1)
         
-        # Grab the next canddate multiplier.
+        # Grab the next candidate multiplier.
         xmin, qa = findmin(xabs)
     end  
-    return x, active
+    return x, active, k
 end
 
 
