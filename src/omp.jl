@@ -32,7 +32,8 @@ function asp_omp(
     gapTol::Real = 1e-06,
     pivTol::Real = 1e-12,
     actMax::Union{Real, Nothing} = nothing,
-    traceFlag::Bool = false) 
+    traceFlag::Bool = false,
+    refactor_freq::Int = 1000) 
     
     time0 = time()
 
@@ -53,9 +54,9 @@ function asp_omp(
     nprodAt = 1
 
     tracer = ASPTracer(
-        Int[],                  # iteration
-        Float64[],              # lambda
-        Vector{SparseVector{Float64}}() # now stores full sparse solutions
+        Int[],
+        Float64[],
+        ASPSolution{Float64}[]
     )
 
     if loglevel > 0
@@ -66,8 +67,6 @@ function asp_omp(
         @info "-"^124
     end
 
-
-    # Initialize local variables.
     EXIT_INFO = Dict(
         :EXIT_OPTIMAL => "Optimal solution found -- full Newton step",
         :EXIT_TOO_MANY_ITNS =>  "Too many iterations",
@@ -84,14 +83,14 @@ function asp_omp(
     x = zeros(Float64, 0)
     zerovec = zeros(Float64, n)
     p = 0
-    cur_r_size = 0
+    # cur_r_size = 0
+    int_ac = 0 
 
     if norm(b, Inf) == 0
         r = zeros(m)
         eFlag = :EXIT_RHS_ZERO
     end
 
-    # Solution is unconstrained for lambda large.
     zmax = norm(z, Inf)
     if eFlag == :EXIT_UNKNOWN && zmax < λin
         r = b
@@ -105,12 +104,13 @@ function asp_omp(
         R = Matrix{Float64}(undef, size(A, 2), size(A, 2))
         S = Matrix{Float64}(undef, size(A, 1), size(A, 2))
         int_ac= length(active)
-        cur_r_size = length(active)
-        S[:, 1:cur_r_size] .= A[:, active]  
+        # cur_r_size = length(active)
+        # S[:, 1:cur_r_size] .= A[:, active]  
+        S[:, 1:int_ac] .= A[:, active]  
         _, R_ = qr(A[:, active])            
-        # Use regular indexing for R
-        println(size(R_))
-        R[1:cur_r_size, 1:cur_r_size] .= R_            # Copy values into R
+        # println(size(R_))
+        # R[1:cur_r_size, 1:cur_r_size] .= R_       
+        R[1:int_ac, 1:int_ac] .= R_       
         itn = 1
         
     end
@@ -133,6 +133,17 @@ function asp_omp(
     # Main loop.
     while true
         # Compute dual obj gradient g, search direction dy, and residual r.
+        if isempty((@view R[1:int_ac,1:int_ac]))
+        # if isempty((@view R[1:cur_r_size,1:cur_r_size]))
+            condS = 1
+        else
+            # rmin = minimum(diag((@view R[1:cur_r_size, 1:cur_r_size])))
+            # rmax = maximum(diag((@view R[1:cur_r_size, 1:cur_r_size])))
+            rmin = minimum(diag((@view R[1:int_ac, 1:int_ac])))
+            rmax = maximum(diag((@view R[1:int_ac, 1:int_ac])))
+            condS = rmax / rmin
+        end
+            
         if itn == 0
             x = Float64[]
             r = b
@@ -140,18 +151,30 @@ function asp_omp(
             nprodAt += 1
             zmax = norm(z, Inf)
         else
-            x,y = csne( (@view R[1:cur_r_size, 1:cur_r_size]), 
-                        (@view S[:,1:cur_r_size]), vec(b))
+            # x,y = csne( (@view R[1:cur_r_size, 1:cur_r_size]), 
+                        # (@view S[:,1:cur_r_size]), vec(b))
+            x,y = csne( (@view R[1:int_ac, 1:int_ac]), 
+                        (@view S[:,1:int_ac]), vec(b))            
             if norm(x, Inf) > 1e12
                 eFlag = :EXIT_SINGULAR_LS
                 break
             end
-            Sx = (@view S[:,1:cur_r_size]) * x
+            Sx = (@view S[:,1:int_ac]) * x
+            # Sx = (@view S[:,1:cur_r_size]) * x
+
             r = b - Sx
         end
 
         rNorm = norm(r, 2)
         xNorm = norm(x, 1)
+
+        if traceFlag
+            push!(tracer.iteration, itn)
+            push!(tracer.lambda, zmax)
+            @views act_now = (itn == 0) ? Int[] : active[1:int_ac]
+            @assert length(act_now) == length(x)
+            push!(tracer.solution, ASPSolution(copy(act_now), copy(x)))
+        end
 
         if loglevel>0
             @info @sprintf("%4i  %8i %12.5e %12.5e %12.5e", itn, p, zmax, rNorm, xNorm)
@@ -159,66 +182,76 @@ function asp_omp(
 
         # Check exit conditions.
         if eFlag != :EXIT_UNKNOWN
-            # Already set. Don't test the other exits.
         elseif zmax <= λin
             eFlag = :EXIT_LAMBDA
         elseif rNorm <= optTol
             eFlag = :EXIT_OPTIMAL
         elseif itn >= itnMax
             eFlag = :EXIT_TOO_MANY_ITNS
-        elseif itn-1 == actMax- int_ac
-            eFlag = :EXIT_ACTMAX
         end
 
         if eFlag != :EXIT_UNKNOWN
             break
         end
-
-        # New iteration starts here.
+      
+        # New iter
         itn += 1
 
         # Find step to the nearest inactive constraint
         z = A_T * r
-        # mul!(z, A', r)
         nprodAt += 1
-        zmax, p = findmax(abs.(z))
+        z_masked = copy(z)
+        z_masked[active] .= 0
+        zmax, p = findmax(abs.(z_masked))
+        if p in active
+            continue  
+        end
+        
+        push!(active, p)
 
-        # if z[p] < 0
-        #     state[p] = -1
-        # else
-        #     state[p] = 1
-        # end
-
-        zerovec[p] = 1   # Extract a = A[:, p]
-        a = A * zerovec          # Compute A[:, p]
+        zerovec[p] = 1   # get a = A[:, p]
+        a = A * zerovec         
 
         nprodA += 1
         zerovec[p] = 0
+        qraddcol!(S, R, a, int_ac, work, work2, work3, work4, work5)  # Update R
 
-        qraddcol!(S, R, a, cur_r_size, work, work2, work3, work4, work5)  # Update R
+        # qraddcol!(S, R, a, cur_r_size, work, work2, work3, work4, work5)  # Update R
         # S = hcat(S, a)  # Expand S, active
-        cur_r_size +=1 
+        # cur_r_size +=1 
+        int_ac += 1
 
-        if traceFlag
-            push!(tracer.iteration, itn)
-            push!(tracer.lambda, zmax)
-            sparse_x_full = spzeros(n)
-            sparse_x_full[copy(active)] = copy(x)  
-            push!(tracer.solution, copy(sparse_x_full))
+        if int_ac >= actMax
+            # FINAL refit with full active set
+            x, y = csne(
+                view(R, 1:int_ac, 1:int_ac),
+                view(S, :, 1:int_ac),
+                vec(b)
+            )
+                
+            eFlag = :EXIT_ACTMAX
+            break
         end
-        push!(active, p)
+
+        if itn % refactor_freq == 0 && int_ac > 0
+            F = qr!(S[:, 1:int_ac])          
+            @views R[1:int_ac, 1:int_ac] = F.R
+        end
+
+        if condS > 1e+6
+            F = qr!(S[:, 1:int_ac])          
+            @views R[1:int_ac, 1:int_ac] = F.R
+        end
 
     end #while true
 
     push!(tracer.iteration, itn)
     push!(tracer.lambda, zmax)
-    sparse_x_full = spzeros(n)
-    sparse_x_full[copy(active)] = copy(x)  
-    push!(tracer.solution, copy(sparse_x_full))
+    push!(tracer.solution, ASPSolution(copy(active), copy(x)))
 
     tottime = time() - time0
     if loglevel > 0
-        @info @sprintf("\nEXIT BPdual -- %s\n", EXIT_INFO[eFlag])
+        @info @sprintf("\nEXIT OMP -- %s\n", EXIT_INFO[eFlag])
         @info @sprintf("%-20s: %8i", "Products with A", nprodA)
         @info @sprintf("%-20s: %8i", "Products with At", nprodAt)
         @info @sprintf("%-20s: %8.1e", "Solution time (sec)", tottime)
