@@ -54,9 +54,9 @@ function asp_omp(
     nprodAt = 1
 
     tracer = ASPTracer(
-        Int[],                  # iteration
-        Float64[],              # lambda
-        Vector{SparseVector{Float64}}()  
+        Int[],
+        Float64[],
+        ASPSolution{Float64}[]
     )
 
     if loglevel > 0
@@ -171,12 +171,9 @@ function asp_omp(
         if traceFlag
             push!(tracer.iteration, itn)
             push!(tracer.lambda, zmax)
-            sparse_x_full = spzeros(n)
             @views act_now = (itn == 0) ? Int[] : active[1:int_ac]
-            # @views act_now = (itn == 0) ? Int[] : active[1:cur_r_size]
             @assert length(act_now) == length(x)
-            sparse_x_full[act_now] = x
-            push!(tracer.solution, copy(sparse_x_full))
+            push!(tracer.solution, ASPSolution(copy(act_now), copy(x)))
         end
 
         if loglevel>0
@@ -191,8 +188,6 @@ function asp_omp(
             eFlag = :EXIT_OPTIMAL
         elseif itn >= itnMax
             eFlag = :EXIT_TOO_MANY_ITNS
-        elseif itn-1 == actMax- int_ac
-            eFlag = :EXIT_ACTMAX
         end
 
         if eFlag != :EXIT_UNKNOWN
@@ -224,11 +219,19 @@ function asp_omp(
         # qraddcol!(S, R, a, cur_r_size, work, work2, work3, work4, work5)  # Update R
         # S = hcat(S, a)  # Expand S, active
         # cur_r_size +=1 
-        int_ac+=1 
-        # if itn % refactor_freq == 0 && cur_r_size > 0
-        #     F = qr!(S[:, 1:cur_r_size])          
-        #     @views R[1:cur_r_size, 1:cur_r_size] = F.R
-        # end
+        int_ac += 1
+
+        if int_ac >= actMax
+            # FINAL refit with full active set
+            x, y = csne(
+                view(R, 1:int_ac, 1:int_ac),
+                view(S, :, 1:int_ac),
+                vec(b)
+            )
+                
+            eFlag = :EXIT_ACTMAX
+            break
+        end
 
         if itn % refactor_freq == 0 && int_ac > 0
             F = qr!(S[:, 1:int_ac])          
@@ -240,17 +243,11 @@ function asp_omp(
             @views R[1:int_ac, 1:int_ac] = F.R
         end
 
-        # if condS > 1e+6
-        #     F = qr!(S[:, 1:cur_r_size])          
-        #     @views R[1:cur_r_size, 1:cur_r_size] = F.R
-        # end
     end #while true
 
     push!(tracer.iteration, itn)
     push!(tracer.lambda, zmax)
-    sparse_x_full = spzeros(n)
-    sparse_x_full[copy(active)] = copy(x)  
-    push!(tracer.solution, copy(sparse_x_full))
+    push!(tracer.solution, ASPSolution(copy(active), copy(x)))
 
     tottime = time() - time0
     if loglevel > 0

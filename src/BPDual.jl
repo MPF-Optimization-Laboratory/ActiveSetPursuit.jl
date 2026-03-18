@@ -1,7 +1,12 @@
+struct ASPSolution{T}
+    active::Vector{Int}
+    values::Vector{T}
+end
+
 struct ASPTracer{T}
     iteration::Vector{Int}
     lambda::Vector{T}
-    solution::Vector{SparseVector{T}} 
+    solution::Vector{ASPSolution{T}}
 end
 
 Base.length(t::ASPTracer) = length(t.iteration)
@@ -13,7 +18,7 @@ end
 Base.lastindex(t::ASPTracer) = lastindex(t.iteration)
 function Base.show(io::IO, t::ASPTracer)
     nsteps = length(t.iteration)
-    nvars = isempty(t.solution) ? 0 : length(t.solution[end].nzind)
+    nvars = isempty(t.solution) ? 0 : length(t.solution[end].active)
     print(io, "ASPTracer(maxactive = $nvars, nsteps = $nsteps)")
 end
 
@@ -117,10 +122,11 @@ function bpdual(
     work5 = Vector{Float64}(undef, m)    
 
     tracer = ASPTracer(
-        Int[],                  # iteration
-        Float64[],              # lambda
-        Vector{SparseVector{Float64}}() # now stores full sparse solutions
+        Int[],
+        Float64[],
+        ASPSolution{Float64}[]
     )
+
 
     if coldstart || isnothing(active) || isnothing(state) || isnothing(y) || isnothing(S) || isnothing(R)
         active = Vector{Int}([])
@@ -298,8 +304,7 @@ function bpdual(
                 @info "\nOptimal solution found. Trimming multipliers..."
             end
             g = b - λin*y
-            x, active = trimx(x, (@view S[:,1:nact]), (@view R[1:nact, 1:nact]), active, state, g, b, λ, feaTol, optTol, loglevel)
-            # x, active = trimx(x, (@view S[:,1:cur_r_size]), (@view R[1:cur_r_size, 1:cur_r_size]), active, state, g, b, λ, feaTol, optTol, loglevel)
+            x, active, numtrim = trimx(x, (@view S[:,1:nact]), (@view R[1:nact, 1:nact]), active, state, g, λ, feaTol, optTol)
             break
         end
 
@@ -375,11 +380,7 @@ function bpdual(
                 F = qr!(S[:, 1:nact])          
                 @views R[1:nact, 1:nact] = F.R
             end     
-            # if itn % refactor_freq == 0 && cur_r_size > 0
-            #     F = qr!(S[:, 1:cur_r_size])          
-            #     @views R[1:cur_r_size, 1:cur_r_size] = F.R
-            # end           
-            # S = [S a]
+
             push!(active, p)
             push!(x, 0)
         else
@@ -404,10 +405,7 @@ function bpdual(
                 qrdelcol!(S, R, qa)
                 # cur_r_size -=1
                 nact    -=1
-                # if itn % refactor_freq == 0 && cur_r_size > 0
-                #     F = qr!(S[:, 1:cur_r_size])         
-                #     @views R[1:cur_r_size, 1:cur_r_size] = F.R
-                # end     
+
                 if itn % refactor_freq == 0 && nact > 0
                     F = qr!(S[:, 1:nact])         
                     @views R[1:nact, 1:nact] = F.R
@@ -420,17 +418,13 @@ function bpdual(
         if traceFlag
             push!(tracer.iteration, itn)
             push!(tracer.lambda, λ)
-            sparse_x_full = spzeros(n)
-            sparse_x_full[copy(active)] = copy(x)  
-            push!(tracer.solution, copy(sparse_x_full))
+            push!(tracer.solution, ASPSolution(copy(active), copy(x)))
         end
     end
 
     push!(tracer.iteration, itn)
     push!(tracer.lambda, λ)
-    sparse_x_full = spzeros(n)
-    sparse_x_full[copy(active)] = copy(x)  
-    push!(tracer.solution, copy(sparse_x_full))
+    push!(tracer.solution, ASPSolution(copy(active), copy(x)))
 
     tottime = time() - time0
     if loglevel > 0
